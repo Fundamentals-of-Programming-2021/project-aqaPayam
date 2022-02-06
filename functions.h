@@ -10,7 +10,7 @@
 #include <time.h>
 #include <string.h>
 #include <math.h>
-#define max_sarbaz 30
+#define max_sarbaz 50
 #define NUM_POTOION 12
 #define NUM_WAR 100
 bool saveandexit=false;
@@ -231,6 +231,7 @@ void showcursorandsound()
         SDL_RenderCopy(renderer, texture_hitler, NULL, &place);
         SDL_FreeSurface(img);
         SDL_DestroyTexture(texture_hitler);
+        SDL_RectEmpty(&place);
     }
     else
     {
@@ -242,6 +243,7 @@ void showcursorandsound()
         SDL_RenderCopy(renderer, texture_hitler, NULL, &place);
         SDL_FreeSurface(img);
         SDL_DestroyTexture(texture_hitler);
+        SDL_RectEmpty(&place);
     }
     SDL_GetMouseState(&xCursor,&yCursor);
     SDL_Surface *image_cursor= SDL_LoadBMP("cursor.bmp");
@@ -254,6 +256,7 @@ void showcursorandsound()
         Mix_PauseMusic();
     else
         Mix_ResumeMusic();
+    SDL_RectEmpty(&cursor_place);
     SDL_FreeSurface(image_cursor);
     SDL_DestroyTexture(texture_cursor);
 }
@@ -273,17 +276,15 @@ void show_text(SDL_Renderer *renderer,int x,int y,const char * text,int font_siz
     SDL_RendererFlip flip = SDL_FLIP_NONE;
     SDL_Texture* mTexture = NULL;
     gFont = TTF_OpenFont(Font, font_size );
-
     SDL_Surface* textSurface = TTF_RenderText_Solid( gFont,text, text_color );
 
     mWidth = textSurface->w;
     mHeight = textSurface->h;
     mTexture = SDL_CreateTextureFromSurface( renderer, textSurface );
 
-    SDL_FreeSurface( textSurface );
-
     SDL_Rect renderQuad = { x, y, mWidth, mHeight };
     SDL_RenderCopyEx( renderer, mTexture, clip, &renderQuad, angle, center, flip );
+    SDL_FreeSurface( textSurface );
     SDL_DestroyTexture( mTexture );
     TTF_CloseFont(gFont);
 }
@@ -314,8 +315,6 @@ void txtRGBA(SDL_Renderer *renderer,int x,int y,const char * text,int font_size,
     mWidth = textSurface->w;
     mHeight = textSurface->h;
     mTexture = SDL_CreateTextureFromSurface( renderer, textSurface );
-    SDL_FreeSurface( textSurface );
-
     if (xCursor >= x && xCursor<=x+mWidth && yCursor>=y && yCursor<=y+mHeight)
     {
         SDL_Surface *image_hitler= SDL_LoadBMP("hitler.bmp");
@@ -326,12 +325,13 @@ void txtRGBA(SDL_Renderer *renderer,int x,int y,const char * text,int font_size,
         SDL_RenderCopy(renderer,texture_hitler,NULL,&hitler_place);
         SDL_FreeSurface(image_hitler);
         SDL_DestroyTexture(texture_hitler);
+        SDL_RectEmpty(&hitler_place);
     }
     SDL_Rect renderQuad = { x, y, mWidth, mHeight };
     SDL_RenderCopyEx( renderer, mTexture, clip, &renderQuad, angle, center, flip );
     SDL_DestroyTexture( mTexture );
+    SDL_FreeSurface( textSurface );
     TTF_CloseFont(gFont);
-
 }
 void check_exit_game(SDL_Event ev)
 {
@@ -448,17 +448,10 @@ void make_randomcolor(uint32_t arr[],int n)
             count++;
         }
     }
-
-//    FILE *fptr;
-//    fptr=fopen("arr_colors.txt","w");
-//    fprintf(fptr,"%d\n",n);
     for( int i = 0 ; i < n-1 ; i++ )
     {
         arr[i+1]=clr[random_numbers[i]+1];
-        //arr[i]=clr[i];
-      //  fprintf(fptr,"%d ",random_numbers[i]+1);
     }
-  //  fclose(fptr);
     arr[0]=clr[0];
 }
 bool click_new_game(SDL_Event ev)
@@ -531,7 +524,6 @@ void render_soldier(struct warstatus war[],int number_of_war,SDL_Texture *textte
             // filledCircleColor(renderer,current->x,current->y,15,arr_color[blocks[current->num_beg_block].index]);
             current=current->next;
         }
-
     }
 }
 char inputs_string(SDL_Event ev)
@@ -657,14 +649,14 @@ void moving_soldiers(struct warstatus war[],struct block arr_block[])
                 }
                 delete_soldier(*current,&war[i].head);
             }
-            for(int j=i+1;j<100;j++)
+            for(int j=i+1;j<NUM_WAR;j++)
             {
                 struct soldier * cur2= war[j].head;
                 while(cur2->next!=NULL)
                 {
                     if (sqrt((current->x - cur2->x)*(current->x - cur2->x) + (current->y - cur2->y)*(current->y - cur2->y)) < 50)
                     {
-                        if(arr_block[current->num_beg_block].index != arr_block[cur2->num_beg_block].index)
+                        if(current->index != cur2->index)
                         {
                             delete_soldier(*current, &war[i].head);
                             delete_soldier(*cur2, &war[j].head);
@@ -698,9 +690,22 @@ struct axis generate_random_potion(struct block arr_block[],int num_block)
     srand((unsigned) time(&t));
     int a=rand() % num_block;
     int b=rand() % num_block;
+    while(b==a)
+        b=rand() % num_block;
+    ////
+    double num;
+    int k=rand()%100;
+    num=k/(double)100;
+    double num2=1-num;
+    ///
     struct axis temp;
-    int x= (arr_block[a].xpos+arr_block[b].xpos)/2;
-    int y= (arr_block[a].ypos+arr_block[b].ypos)/2;
+    int x;
+    int y;
+
+    //
+     x= (arr_block[a].xpos*num +arr_block[b].xpos*num2);
+     y= (arr_block[a].ypos*num +arr_block[b].ypos*num2);
+    //
     temp.x=x;
     temp.y=y;
     return temp;
@@ -757,7 +762,6 @@ void run_potion(struct potion potions[],struct warstatus wars[],struct block arr
     {
         if(potions[i].runnig == true && potions[i].exist==true)
         {
-            //   printf("%d is running\n",i);
             switch (i%4)
             {
                 case 0:
@@ -807,7 +811,8 @@ void deactive_potion(struct potion potions,int i,struct warstatus wars[],struct 
 {
     if(potions.runnig==true && potions.exist==true)
     {
-        switch (i % 4) {
+        switch (i % 4)
+        {
             case 0:
                 for (int j = 0; j < NUM_WAR; j++) {
                     struct soldier *current = wars[j].head;
@@ -843,6 +848,22 @@ void deactive_potion(struct potion potions,int i,struct warstatus wars[],struct 
         }
     }
 }
+void make_game_easy(struct block arr[])
+{
+ for(int i=0;i<number_of_block;i++)
+     if(arr[i].index==-1)
+     {
+         arr[i].index=0;
+         break;
+     }
+ for(int i=0;i<number_of_block;i++)
+        if(arr[i].index==0)
+        {
+            arr[i].number_soldier=30;
+            arr[i].number_soldier2=30;
+        }
+
+}
 struct axis AI1(struct block arr[],int numblock)
 {
     struct axis temp;
@@ -850,7 +871,8 @@ struct axis AI1(struct block arr[],int numblock)
     double R;
     double Rmin=5000;
     bool found=false;
-    int random_numbers[numblock];{
+    int random_numbers[numblock];
+    {
         for (int i = 0; i < numblock; i++)
             random_numbers[i] = -1;
         int count = 0;
@@ -879,7 +901,7 @@ struct axis AI1(struct block arr[],int numblock)
                 if (arr[random_numbers[i]].number_soldier2 > arr[random_numbers[j]].number_soldier2 + 1 &&
                     arr[random_numbers[i]].index!=arr[random_numbers[j]].index)
                 {
-                    printf("n %d %d\n",random_numbers[i],random_numbers[j]);
+                    //printf("n %d %d\n",random_numbers[i],random_numbers[j]);
                     R=sqrt(( (arr[random_numbers[i]].xpos-arr[random_numbers[j]].xpos)
                              *(arr[random_numbers[i]].xpos-arr[random_numbers[j]].xpos)) +
                            ((arr[random_numbers[i]].ypos-arr[random_numbers[j]].ypos) *
@@ -901,7 +923,7 @@ struct axis AI1(struct block arr[],int numblock)
     p.x=-1;
     p.y=-1;
     return p;
-}
+} //nazdik tarini ke ghabel hamle ast
 struct axis AI2(struct block arr[],int numblock)
 {
     struct axis temp;
@@ -955,7 +977,7 @@ struct axis AI2(struct block arr[],int numblock)
     p.x=-1;
     p.y=-1;
     return p;
-}
+} // be oon badbakhti ke kamtarin sarbazo dare hamle mikone
 struct axis AI3(struct block arr[],int numblock)
 {
     struct axis temp;
@@ -1010,7 +1032,52 @@ struct axis AI3(struct block arr[],int numblock)
     p.x=-1;
     p.y=-1;
     return p;
-}
+} //ta hamle koni jaei miad zaneto pare mikone
+struct axis AI4(struct block arr[],int numblock)
+{
+    struct axis temp;
+    time_t t;
+    int soldier;
+    int random_numbers[numblock];{
+        for (int i = 0; i < numblock; i++)
+            random_numbers[i] = -1;
+        int count = 0;
+        srand((unsigned) time(&t));
+        while (count < numblock) {
+            int randNum = rand() % numblock;
+            bool found = false;
+            for (int i = 0; i < count; i++) {
+                if (random_numbers[i] == randNum) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                random_numbers[count] = randNum;
+                count++;
+            }
+        }
+    }
+    for(int i = 0 ;i<numblock;i++)
+    {
+        if( arr[random_numbers[i]].index != 0 && arr[random_numbers[i]].index !=-1)
+        {
+            for (int j = 0; j < numblock; j++)
+            {
+                if (arr[random_numbers[i]].number_soldier > arr[random_numbers[j]].number_soldier2 + 1)
+                {
+                        temp.x=random_numbers[i];
+                        temp.y=random_numbers[j];
+                        return temp;
+                }
+            }
+        }
+    }
+    struct axis p;
+    p.x=-1;
+    p.y=-1;
+    return p;
+}//2 ta khoone random ro hamle mide
 bool win(struct block arr[],int numblock)
 {
     bool youwin=true;
@@ -1426,15 +1493,6 @@ void numberTOstring(int num,char ch[])
         return;
     }
 }
-bool is_there_any_soldier(struct warstatus wars[],int numwars)
-{
-    for(int i=0;i<numwars;i++)
-    {
-        if(wars[i].head->next!=NULL)
-            return true;
-    }
-    return false;
-}
 void show_save()
 {
     SDL_Surface *img = SDL_LoadBMP("save.bmp");
@@ -1643,8 +1701,6 @@ bool leaderboard()
     texture=NULL;
     image=NULL;
     music=NULL;
-    Mix_Quit();
-    SDL_Quit();
     return false ;
 }
 void delete_work(SDL_Event ev)
@@ -1699,7 +1755,60 @@ void render_delet()
     SDL_FreeSurface(img);
     SDL_DestroyTexture(texture_hitler);
 }
-void map(int which)
+void delete_last_map_save()
+{
+
+    const SDL_MessageBoxButtonData buttons[] = {
+            { /* .flags, .buttonid, .text */        0, 0, "YES" },
+            { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "NO" }
+    };
+    const SDL_MessageBoxColorScheme colorScheme = {
+            { /* .colors (.r, .g, .b) */
+                    /* [SDL_MESSAGEBOX_COLOR_BACKGROUND] */
+                    { 50,   50,   50 },
+                    /* [SDL_MESSAGEBOX_COLOR_TEXT] */
+                    {   255, 255,   255 },
+                    /* [SDL_MESSAGEBOX_COLOR_BUTTON_BORDER] */
+                    { 0,   0,   0 },
+                    /* [SDL_MESSAGEBOX_COLOR_BUTTON_BACKGROUND] */
+                    {   0, 0, 200 },
+                    /* [SDL_MESSAGEBOX_COLOR_BUTTON_SELECTED] */
+                    { 255,   0, 0 }
+            }
+    };
+    const SDL_MessageBoxData messageboxdata = {
+            SDL_MESSAGEBOX_INFORMATION, /* .flags */
+            NULL, /* .window */
+            "saving", /* .title */
+            "Do you want to save this map ?", /* .message */
+            SDL_arraysize(buttons), /* .numbuttons */
+            buttons, /* .buttons */
+            &colorScheme /* .colorScheme */
+    };
+    int buttonid=-1;
+    Mix_PauseMusic();
+    SDL_ShowMessageBox(&messageboxdata, &buttonid);
+    if(buttonid==1)
+        {
+            how_many_maps();
+            char ch[5];
+            numberTOstring(number_of_maps-1,ch);
+            char temp1[20]="arr_colors";
+            char temp2[20]="saved";
+            strcat(temp1,ch);
+            strcat(temp1,".txt");
+            strcat(temp2,ch);
+            strcat(temp2,".txt");
+            remove(temp1);
+            remove(temp2);
+            number_of_maps--;
+            write_number_of_maps();
+        }
+        else
+            Mix_ResumeMusic();
+
+}
+bool map(int which)
 {
     int blockclicked1=-1;
     int blockclicked2=-1;
@@ -1739,7 +1848,7 @@ void map(int which)
                     arr_of_block[i].index=i;
             }
 //            printf("%d ",random_numbers[i]);
-
+            make_game_easy(arr_of_block);
 
         }  //inja miad arr_of_block ro random tarif mikone az all block
 
@@ -1753,6 +1862,7 @@ void map(int which)
         strcat(mamad,".txt");
                 /////
             FILE * fptr;
+
             fptr= fopen(mamad,"w");
             fprintf(fptr,"%d\n",number_of_player);
             for(int i=1;i<number_of_player;i++)
@@ -1763,6 +1873,8 @@ void map(int which)
             strcpy(mamad,"saved");
             strcat(mamad,endname);
             strcat(mamad,".txt");
+
+            fclose(fptr);
 
             fptr=fopen(mamad,"w");
             fprintf(fptr,"%d\n",number_of_block);
@@ -1831,7 +1943,7 @@ void map(int which)
                 fprintf(fptr,"%d ",fps_potion[i]);
 
             fclose(fptr);
-            printf("new map saved\n");
+           // printf("new map saved\n");
             number_of_maps++;
             write_number_of_maps();
 
@@ -1849,6 +1961,7 @@ void map(int which)
                 arr_of_colors[i]=clr[temp];
             }
             arr_of_colors[0]=clr[0];
+            fclose(fptr);
             //////////////////////////////////////////
             fptr=fopen("saved.txt","r");
             fscanf(fptr," %d",&number_of_block);
@@ -1953,7 +2066,7 @@ void map(int which)
                 fscanf(fptr," %d",&fps_potion[i]);
 
             fclose(fptr);
-            printf("loaded\n");
+         //   printf("loaded\n");
         }
     else    ///map az ghabl sakhte shode
     {
@@ -1968,7 +2081,7 @@ void map(int which)
         if(fptr==NULL)
         {
             printf("file vojood nadare \n");
-            return ;
+            return false;
         }
         fscanf(fptr," %d",&number_of_player);
         arr_of_colors=(uint32_t *)malloc(number_of_player*sizeof (uint32_t));
@@ -1978,6 +2091,7 @@ void map(int which)
             arr_of_colors[i]=clr[temp];
         }
         arr_of_colors[0]=clr[0];
+        fclose(fptr);
         //////////////////////////////////////////
         char namegame[50]="saved";
         strcat(namegame,ch);
@@ -1986,7 +2100,7 @@ void map(int which)
         if(fptr==NULL)
         {
             printf("file vojood nadare \n");
-            return ;
+            return false ;
         }
 
         fscanf(fptr," %d",&number_of_block);
@@ -2094,7 +2208,6 @@ void map(int which)
         printf("loaded\n");
     }
 
-
     ///berim hala karaye rendering
     if(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY,MIX_DEFAULT_FORMAT,2,2048) < 0)
         printf("%s",Mix_GetError());
@@ -2102,7 +2215,8 @@ void map(int which)
     Mix_Music *warningmusic=Mix_LoadMUS("potionmusic.mp3");
 
     if (!is_ok_to_run_game())
-        return ;
+        return false ;
+
     window = SDL_CreateWindow("game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               SCREEN_WIDTH,
                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
@@ -2181,7 +2295,6 @@ void map(int which)
 
     Mix_PlayMusic(music,-1);
 
-
     while (game_is_running)
     {
         if (counterFPS == 9223372036854775807)
@@ -2192,6 +2305,7 @@ void map(int which)
         SDL_RenderCopy(renderer, texture, NULL, &texture_rect);
         SDL_ShowCursor(SDL_DISABLE);
         render_blocks(number_of_block, arr_of_colors, arr_of_block, texture_block_khali, texture_block_por);
+
         while (SDL_PollEvent(&event))
         {
             blockclicked2 = which_block_clicked(arr_of_block, number_of_block, event);
@@ -2201,6 +2315,7 @@ void map(int which)
         }
         moving_soldiers(wars, arr_of_block);
         check_to_active_potion(pot, wars);
+
         if (ai_potion == true)
         {
             SDL_RenderCopy(renderer, warningtxt, NULL, &texture_rect);
@@ -2208,6 +2323,7 @@ void map(int which)
             SDL_Delay(1000);
         }
         ai_potion = false;
+
         if (your_potion == true) {
             Mix_PlayMusic(warningmusic, 1);
         }
@@ -2223,6 +2339,8 @@ void map(int which)
         showcursorandsound();
         if(saveandexit)
         {
+           // if(which==-1)
+           //  delete_last_map_save();
             FILE * fptr;
             fptr= fopen("arr_colors.txt","w");
             fprintf(fptr,"%d\n",number_of_player);
@@ -2230,7 +2348,7 @@ void map(int which)
                 for(int j=0;j<10;j++)
                     if(arr_of_colors[i]==clr[j])
                         fprintf(fptr,"%d ",j);
-
+            fclose(fptr);
             fptr=fopen("saved.txt","w");
             fprintf(fptr,"%d\n",number_of_block);
             for(int i=0;i<number_of_block;i++)
@@ -2298,31 +2416,60 @@ void map(int which)
                 fprintf(fptr,"%d ",fps_potion[i]);
 
             fclose(fptr);
+
             SDL_RenderCopy(renderer,textture_waiting,NULL,&texture_rect);
             SDL_RenderPresent(renderer);
             SDL_Delay(1000);
-            SDL_DestroyTexture(textture_waiting);
-            SDL_DestroyRenderer(renderer);
-            SDL_DestroyWindow(window);
-            SDL_DestroyTexture(texture);
-            SDL_FreeSurface(image);
-            Mix_FreeMusic(warningmusic);
-            Mix_FreeMusic(music);
-            window = NULL;
-            renderer = NULL;
-            texture=NULL;
-            image=NULL;
-            music=NULL;
-            Mix_Quit();
-            SDL_Quit();
-            printf("saved\n");
+            {
+                SDL_DestroyTexture(texture);
+                SDL_FreeSurface(image);
+                Mix_FreeMusic(music);
+
+                SDL_DestroyTexture(warningtxt);
+                SDL_FreeSurface(warningimg);
+                Mix_FreeMusic(warningmusic);
+
+                SDL_DestroyTexture(texture_block_por);
+                SDL_FreeSurface(image_block_por);
+
+                SDL_DestroyTexture(texture_block_khali);
+                SDL_FreeSurface(image_block_khali);
+                for(int i=0;i<10;i++)
+                {
+                    SDL_DestroyTexture(texture_soldier[i]);
+                    SDL_FreeSurface(image_soldier[i]);
+                }
+                for(int i=0;i<4;i++)
+                {
+                    SDL_DestroyTexture(texture_potionD[i]);
+                    SDL_FreeSurface(image_potionD[i]);
+                }
+                for(int i=0;i<4;i++)
+                {
+                    SDL_DestroyTexture(texture_potionA[i]);
+                    SDL_FreeSurface(image_potionA[i]);
+                }
+
+                SDL_DestroyTexture(textture_waiting);
+                SDL_FreeSurface(img_waiting);
+
+                SDL_DestroyRenderer(renderer);
+                SDL_DestroyWindow(window);
+                window = NULL;
+                renderer = NULL;
+                texture=NULL;
+                image=NULL;
+                music=NULL;
+
+            }
+           // printf("saved\n");
             run_menu=true;
-            return ;
+            return true;
         }  //inja bayad bazi save va baste beshe
         SDL_RenderPresent(renderer);
         SDL_Delay(1000 / FPS);
         SDL_RenderClear(renderer);
-        if (counterFPS % 60 == 0)  //har 1 sanie ba ehtemal 10%
+        if (counterFPS % 60 == 0)  //har 1 sanie ba ehtemal 50%
         {
             time_t t;
             srand((unsigned) time(&t));
@@ -2400,11 +2547,13 @@ void map(int which)
         {
             if (pot[i].exist == true)
                 fps_potion[i]++;
-            if (fps_potion[i] > 150 && pot[i].runnig == false) {
+            if (fps_potion[i] > 150 && pot[i].runnig == false)
+            {
                 pot[i].exist = false;
                 pot[i].runnig = false;
             }
-            if (fps_potion[i] > 300 && pot[i].runnig == true) {
+            if (fps_potion[i] > 300 && pot[i].runnig == true)
+            {
                 if (pot[i].index == 0)
                     your_potion = false;
                 else
@@ -2415,18 +2564,20 @@ void map(int which)
             }
         } //zaman bandi az bein bordan potion
         struct axis AIatack ;
-        if (counterFPS % 100==0   )
+        if (counterFPS % 100==0 )
         {
             countai++;
-            if(countai%3==0)
+            if(countai%4==0)
                 AIatack = AI1(arr_of_block, number_of_block);
-            else if(countai %3==1)
+            else if(countai %4==1)
                 AIatack = AI2(arr_of_block, number_of_block);
-            else if(countai %3==2)
+            else if(countai %4==2)
                 AIatack = AI3(arr_of_block, number_of_block);
+            else if(countai %4==3)
+                AIatack = AI4(arr_of_block, number_of_block);
             if (AIatack.x != -1 && AIatack.y != -1)
             {
-                printf("%d %d\n", AIatack.x, AIatack.y);
+              //  printf("%d %d\n", AIatack.x, AIatack.y);
                 wars[number_of_attack%NUM_WAR].def = AIatack.y;
                 wars[number_of_attack%NUM_WAR].att = AIatack.x;
                 wars[number_of_attack%NUM_WAR].num_soldier = arr_of_block[AIatack.x].number_soldier2;
@@ -2437,22 +2588,70 @@ void map(int which)
         }  //AI
         if (win(arr_of_block,number_of_block))
         {
+     //       if(which==-1)
+     //           delete_last_map_save();
             write_win_to_file();
             for(int i=0;i<3;i++)
                 write_loseAI_to_file(i);
+
             image= IMG_Load("win.jpg");
             texture= SDL_CreateTextureFromSurface(renderer,image);
             SDL_RenderCopy(renderer,texture,NULL,&texture_rect);
-            show_text(renderer,0,0,name,120,0,255,0,255);
-            show_text(renderer,0,120,"WIN",120,0,255,0,255);
-            printf("win");
+            if(strcmp(name,""))
+                show_text(renderer,50,50,name,120,0,255,0,255);
+            show_text(renderer,50,170,"WIN",120,0,255,0,255);
+           // printf("win");
             SDL_RenderPresent(renderer);
             SDL_Delay(3000);
             run_menu=true;
-            break;
+            {
+                SDL_DestroyTexture(texture);
+                SDL_FreeSurface(image);
+                Mix_FreeMusic(music);
+
+                SDL_DestroyTexture(warningtxt);
+                SDL_FreeSurface(warningimg);
+                Mix_FreeMusic(warningmusic);
+
+                SDL_DestroyTexture(texture_block_por);
+                SDL_FreeSurface(image_block_por);
+
+                SDL_DestroyTexture(texture_block_khali);
+                SDL_FreeSurface(image_block_khali);
+                for(int i=0;i<10;i++)
+                {
+                    SDL_DestroyTexture(texture_soldier[i]);
+                    SDL_FreeSurface(image_soldier[i]);
+                }
+                for(int i=0;i<4;i++)
+                {
+                    SDL_DestroyTexture(texture_potionD[i]);
+                    SDL_FreeSurface(image_potionD[i]);
+                }
+                for(int i=0;i<4;i++)
+                {
+                    SDL_DestroyTexture(texture_potionA[i]);
+                    SDL_FreeSurface(image_potionA[i]);
+                }
+
+                SDL_DestroyTexture(textture_waiting);
+                SDL_FreeSurface(img_waiting);
+
+                SDL_DestroyRenderer(renderer);
+                SDL_DestroyWindow(window);
+                window = NULL;
+                renderer = NULL;
+                texture=NULL;
+                image=NULL;
+                music=NULL;
+
+            }
+            return true;
         }
         if(lose(arr_of_block,number_of_block))
         {
+        //    if(which==-1)
+        //      delete_last_map_save();
             time_t t;
             srand((unsigned) time(&t));
             write_winAI_to_file(rand()%3);
@@ -2460,30 +2659,104 @@ void map(int which)
             image= IMG_Load("lose.jpg");
             texture= SDL_CreateTextureFromSurface(renderer,image);
             SDL_RenderCopy(renderer,texture,NULL,&texture_rect);
-            show_text(renderer,0,0,name,120,255,0,0,255);
-            show_text(renderer,0,120,"LOST",120,255,0,0,255);
+            if(strcmp(name,""))
+             show_text(renderer,50,50,name,120,255,0,0,255);
+            show_text(renderer,50,170,"LOST",120,255,0,0,255);
             SDL_RenderPresent(renderer);
             SDL_Delay(3000);
-            printf("lose");
+           // printf("lose");
             run_menu=true;
-            break;
+            {
+                SDL_DestroyTexture(texture);
+                SDL_FreeSurface(image);
+                Mix_FreeMusic(music);
+
+                SDL_DestroyTexture(warningtxt);
+                SDL_FreeSurface(warningimg);
+                Mix_FreeMusic(warningmusic);
+
+                SDL_DestroyTexture(texture_block_por);
+                SDL_FreeSurface(image_block_por);
+
+                SDL_DestroyTexture(texture_block_khali);
+                SDL_FreeSurface(image_block_khali);
+                for(int i=0;i<10;i++)
+                {
+                    SDL_DestroyTexture(texture_soldier[i]);
+                    SDL_FreeSurface(image_soldier[i]);
+                }
+                for(int i=0;i<4;i++)
+                {
+                    SDL_DestroyTexture(texture_potionD[i]);
+                    SDL_FreeSurface(image_potionD[i]);
+                }
+                for(int i=0;i<4;i++)
+                {
+                    SDL_DestroyTexture(texture_potionA[i]);
+                    SDL_FreeSurface(image_potionA[i]);
+                }
+
+                SDL_DestroyTexture(textture_waiting);
+                SDL_FreeSurface(img_waiting);
+
+                SDL_DestroyRenderer(renderer);
+                SDL_DestroyWindow(window);
+                window = NULL;
+                renderer = NULL;
+                texture=NULL;
+                image=NULL;
+                music=NULL;
+
+            }
+            return true;
         }
     }
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_DestroyTexture(texture);
-    SDL_FreeSurface(image);
-    Mix_FreeMusic(warningmusic);
-    Mix_FreeMusic(music);
-    window = NULL;
-    renderer = NULL;
-    texture=NULL;
-    image=NULL;
-    music=NULL;
-    Mix_Quit();
-    SDL_Quit();
-    return ;
-}
+ //   if(which==-1)
+ //     delete_last_map_save();
+    {
+        SDL_DestroyTexture(texture);
+        SDL_FreeSurface(image);
+        Mix_FreeMusic(music);
+
+        SDL_DestroyTexture(warningtxt);
+        SDL_FreeSurface(warningimg);
+        Mix_FreeMusic(warningmusic);
+
+        SDL_DestroyTexture(texture_block_por);
+        SDL_FreeSurface(image_block_por);
+
+        SDL_DestroyTexture(texture_block_khali);
+        SDL_FreeSurface(image_block_khali);
+        for(int i=0;i<10;i++)
+        {
+            SDL_DestroyTexture(texture_soldier[i]);
+            SDL_FreeSurface(image_soldier[i]);
+        }
+        for(int i=0;i<4;i++)
+        {
+            SDL_DestroyTexture(texture_potionD[i]);
+            SDL_FreeSurface(image_potionD[i]);
+        }
+        for(int i=0;i<4;i++)
+        {
+            SDL_DestroyTexture(texture_potionA[i]);
+            SDL_FreeSurface(image_potionA[i]);
+        }
+
+        SDL_DestroyTexture(textture_waiting);
+        SDL_FreeSurface(img_waiting);
+
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        window = NULL;
+        renderer = NULL;
+        texture=NULL;
+        image=NULL;
+        music=NULL;
+
+    }
+    return false;
+}   // save ya win ya lose return true end game ya eror return false
 bool random_map()
 {
     bool first_number=true;
@@ -2565,20 +2838,17 @@ bool random_map()
     texture=NULL;
     image=NULL;
     music=NULL;
-    Mix_Quit();
-    SDL_Quit();
     return false ;
-}
+}    //true vaqti bargashti ghabl false vaqti bazi baste shod
 bool select_map()
 {
     while (game_is_running)
     {
         SDL_RenderCopy(renderer, texture, NULL, &texture_rect);
         SDL_ShowCursor(SDL_DISABLE);
-        showcursorandsoundLEADERBOARD();
 
         char temp[10]="";
-        char nahaei[50]="NUMBER OG MAPS SAVED = ";
+        char nahaei[50]="NUMBER OF MAPS SAVED = ";
         how_many_maps();
         numberTOstring(number_of_maps,temp);
         strcat(nahaei,temp);
@@ -2624,6 +2894,7 @@ bool select_map()
             }
             check_exit_game(event);
         }
+        showcursorandsoundLEADERBOARD();
         SDL_RenderPresent(renderer);
         SDL_Delay(1000 / FPS);
         SDL_RenderClear(renderer);
@@ -2638,8 +2909,6 @@ bool select_map()
     texture=NULL;
     image=NULL;
     music=NULL;
-    Mix_Quit();
-    SDL_Quit();
     return false ;
 }
 bool new_game()
@@ -2662,18 +2931,6 @@ bool new_game()
             {
                 if(!random_map())
                 {
-                    SDL_DestroyRenderer(renderer);
-                    SDL_DestroyWindow(window);
-                    SDL_DestroyTexture(texture);
-                    SDL_FreeSurface(image);
-                    Mix_FreeMusic(music);
-                    window = NULL;
-                    renderer = NULL;
-                    texture = NULL;
-                    image = NULL;
-                    music = NULL;
-                    Mix_Quit();
-                    SDL_Quit();
                     return false;
                 }
             }
@@ -2681,18 +2938,6 @@ bool new_game()
             {
                 if(!select_map())
                 {
-                    SDL_DestroyRenderer(renderer);
-                    SDL_DestroyWindow(window);
-                    SDL_DestroyTexture(texture);
-                    SDL_FreeSurface(image);
-                    Mix_FreeMusic(music);
-                    window = NULL;
-                    renderer = NULL;
-                    texture = NULL;
-                    image = NULL;
-                    music = NULL;
-                    Mix_Quit();
-                    SDL_Quit();
                     return false;
                 }
             }
@@ -2718,7 +2963,6 @@ bool new_game()
 }
 void menu(){
     strcat(name_used_in_menu,name);
-    //TTF_Init();
     if(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY,MIX_DEFAULT_FORMAT,2,2048) < 0)
         printf("%s",Mix_GetError());
     music= Mix_LoadMUS("music.mp3");
@@ -2734,24 +2978,14 @@ void menu(){
         printf("ridi %s", SDL_GetError());
     texture = SDL_CreateTextureFromSurface(renderer, image);
     Mix_PlayMusic(music,-1);
-    while (game_is_running) {
+    while (game_is_running)
+    {
         while(SDL_PollEvent(&event))
         {
             if(click_new_game(event))
             {
-                if (!new_game()) {
-                    SDL_DestroyRenderer(renderer);
-                    SDL_DestroyWindow(window);
-                    SDL_DestroyTexture(texture);
-                    SDL_FreeSurface(image);
-                    Mix_FreeMusic(music);
-                    window = NULL;
-                    renderer = NULL;
-                    texture = NULL;
-                    image = NULL;
-                    music = NULL;
-                    Mix_Quit();
-                    SDL_Quit();
+                if (!new_game())
+                {
                     return;
                 } //close the game
                 sound = !sound;
@@ -2785,25 +3019,13 @@ void menu(){
                     image = NULL;
                     music = NULL;
                     map(-2);
-                    return;
+                    return ;
                 }
             }
             if(click_ranking(event))
             {
                 if(!leaderboard())
                 {
-                    SDL_DestroyRenderer(renderer);
-                    SDL_DestroyWindow(window);
-                    SDL_DestroyTexture(texture);
-                    SDL_FreeSurface(image);
-                    Mix_FreeMusic(music);
-                    window = NULL;
-                    renderer = NULL;
-                    texture=NULL;
-                    image=NULL;
-                    music=NULL;
-                    Mix_Quit();
-                    SDL_Quit();
                     return ;
                 } //close the game
                 sound=!sound;
@@ -2834,9 +3056,7 @@ void menu(){
     renderer = NULL;
     texture=NULL;
     image=NULL;
-    music=NULL;
-    Mix_Quit();
-    SDL_Quit();
+    return ;
 }
 void intro()
 {
@@ -3026,6 +3246,8 @@ void first_page()
                     SDL_DestroyWindow(window);
                     SDL_DestroyTexture(texture);
                     SDL_FreeSurface(image);
+                    SDL_DestroyTexture(texturegame);
+                    SDL_DestroyTexture(txt);
                     Mix_FreeMusic(music);
                     window = NULL;
                     renderer = NULL;
@@ -3034,16 +3256,20 @@ void first_page()
                     music=NULL;
                     intro();
                 }
-                SDL_DestroyRenderer(renderer);
-                SDL_DestroyWindow(window);
-                SDL_DestroyTexture(texture);
-                SDL_FreeSurface(image);
-                Mix_FreeMusic(music);
-                window = NULL;
-                renderer = NULL;
-                texture=NULL;
-                image=NULL;
-                music=NULL;
+                else {
+                    SDL_DestroyRenderer(renderer);
+                    SDL_DestroyWindow(window);
+                    SDL_DestroyTexture(texture);
+                    SDL_FreeSurface(image);
+                    SDL_DestroyTexture(texturegame);
+                    SDL_DestroyTexture(txt);
+                    Mix_FreeMusic(music);
+                    window = NULL;
+                    renderer = NULL;
+                    texture = NULL;
+                    image = NULL;
+                    music = NULL;
+                }
                 menu();
                 return;
             }
