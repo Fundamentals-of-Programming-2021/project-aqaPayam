@@ -2,6 +2,9 @@
 #include "default_funcs.h"
 int main()
 {
+    if(!is_ok_to_run_game())
+        return -1;
+
     for (int i = 0; i < NUM_POTOION; i++) {
         pot[i].x = -1;
         pot[i].y = -1;
@@ -17,10 +20,26 @@ int main()
         wars[i].head->x = 0;
     }
 
+
+
+
   first_page();
 
   while(run_menu)
   {
+      for (int i = 0; i < NUM_WAR; i++)
+      {
+          struct soldier * temp;
+          struct soldier *current=wars[i].head;
+          while(current->next!=NULL)
+          {
+              temp=current;
+              current=current->next;
+              free(temp);
+          }
+          free(current);
+      }
+
           for (int i = 0; i < NUM_POTOION; i++) {
               pot[i].x = -1;
               pot[i].y = -1;
@@ -35,8 +54,6 @@ int main()
               wars[i].head->next = NULL;
               wars[i].head->x = 0;
           }
-
-
 
     for(int i=0;i<NUM_POTOION;i++)
         pot[i].exist=false;
@@ -62,7 +79,8 @@ int main()
       menu();
   }
 
-
+    for (int i = 0; i < NUM_WAR; i++)
+        free(wars[i].head);
     Mix_Quit();
     SDL_Quit();
 
