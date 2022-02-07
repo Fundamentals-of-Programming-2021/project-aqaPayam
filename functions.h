@@ -124,6 +124,55 @@ int stringToNumber(char * j)
     }
     return res;
 }
+void strrev(char *str1)
+{
+    // declare variable
+    int i, len, temp;
+    len = strlen(str1); // use strlen() to get the length of str string
+
+    // use for loop to iterate the string
+    for (i = 0; i < len/2; i++)
+    {
+        // temp variable use to temporary hold the string
+        temp = str1[i];
+        str1[i] = str1[len - i - 1];
+        str1[len - i - 1] = temp;
+    }
+}
+void numberTOstring(int num,char ch[])
+{
+    if (num==0)
+    {
+        ch[0]='0';
+        ch[1]='\0';
+        return ;
+    }
+    if(num>0) {
+        int counter = 0;
+        while (num > 0) {
+            ch[counter] = (int) (num % 10 + 48);
+            counter++;
+            num /= 10;
+        }
+        ch[counter] = '\0';
+        strrev(ch);
+        return;
+    }
+    if(num<0)
+    {
+        num*=-1;
+        int counter = 0;
+        while (num > 0) {
+            ch[counter] = (int) (num % 10 + 48);
+            counter++;
+            num /= 10;
+        }
+        ch[counter]='-';
+        ch[counter+1] = '\0';
+        strrev(ch);
+        return;
+    }
+}
 void how_many_maps()
 {
     FILE* fptr;
@@ -176,21 +225,6 @@ int which_block_clicked(struct block arr_of_valid_block[],int num_of_valiv_block
                 return i;
     }
     return -1;
-}
-void strrev(char *str1)
-{
-    // declare variable
-    int i, len, temp;
-    len = strlen(str1); // use strlen() to get the length of str string
-
-    // use for loop to iterate the string
-    for (i = 0; i < len/2; i++)
-    {
-        // temp variable use to temporary hold the string
-        temp = str1[i];
-        str1[i] = str1[len - i - 1];
-        str1[len - i - 1] = temp;
-    }
 }
 int number_to_string(int num)
 {
@@ -1436,6 +1470,75 @@ bool check_delete_leaderboard(SDL_Event ev)
     }
     return false;
 }
+void delete_all_maps()
+{
+    how_many_maps();
+    for(int i=0;i<number_of_maps;i++)
+    {
+        char endname[10];
+        numberTOstring(i,endname);
+        char mamad[50]="screenshot";
+        strcat(mamad,endname);
+        strcat(mamad,".bmp");
+        remove(mamad);
+
+        strcpy(mamad,"saved");
+        strcat(mamad,endname);
+        strcat(mamad,".txt");
+        remove(mamad);
+
+        strcpy(mamad,"arr_colors");
+        strcat(mamad,endname);
+        strcat(mamad,".txt");
+        remove(mamad);
+    }
+
+    FILE * fptr=fopen("nummaps.txt","w");
+    fprintf(fptr,"%d",0);
+    fclose(fptr);
+}
+bool check_delete_maps(SDL_Event ev)
+{
+    SDL_GetMouseState(&xCursor,&yCursor);
+    if(xCursor >= 1720 && xCursor<=1830 &&yCursor>=150 && yCursor<=260 && ev.type==SDL_MOUSEBUTTONUP)
+    {
+        const SDL_MessageBoxButtonData buttons[] = {
+                { /* .flags, .buttonid, .text */        0, 0, "YES" },
+                { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "NO" }
+        };
+        const SDL_MessageBoxColorScheme colorScheme = {
+                { /* .colors (.r, .g, .b) */
+                        /* [SDL_MESSAGEBOX_COLOR_BACKGROUND] */
+                        { 50,   50,   50 },
+                        /* [SDL_MESSAGEBOX_COLOR_TEXT] */
+                        {   255, 255,   255 },
+                        /* [SDL_MESSAGEBOX_COLOR_BUTTON_BORDER] */
+                        { 0,   0,   0 },
+                        /* [SDL_MESSAGEBOX_COLOR_BUTTON_BACKGROUND] */
+                        {   0, 0, 200 },
+                        /* [SDL_MESSAGEBOX_COLOR_BUTTON_SELECTED] */
+                        { 255,   0, 0 }
+                }
+        };
+        const SDL_MessageBoxData messageboxdata = {
+                SDL_MESSAGEBOX_INFORMATION, /* .flags */
+                NULL, /* .window */
+                "DELETE", /* .title */
+                "Are you sure you want to delete all maps ?", /* .message */
+                SDL_arraysize(buttons), /* .numbuttons */
+                buttons, /* .buttons */
+                &colorScheme /* .colorScheme */
+        };
+        int buttonid=-1;
+        SDL_ShowMessageBox(&messageboxdata, &buttonid);
+        if(buttonid==0)
+        {
+            delete_all_maps();
+            return true;
+        }
+    }
+    return false;
+}
 void show_delete_leaderborad()
 {
     SDL_Surface *img = IMG_Load("delicon.png");
@@ -1459,40 +1562,21 @@ void boxleaderboard(SDL_Renderer * renderer,int x,int y,struct line khat,int R,i
     show_text(renderer,x+1300,y,khat.point,50,0,0,255,255);
 
 }
-void numberTOstring(int num,char ch[])
+
+void screenshot()
 {
-    if (num==0)
-    {
-        ch[0]='0';
-        ch[1]='\0';
-        return ;
-    }
-    if(num>0) {
-        int counter = 0;
-        while (num > 0) {
-            ch[counter] = (int) (num % 10 + 48);
-            counter++;
-            num /= 10;
-        }
-        ch[counter] = '\0';
-        strrev(ch);
-        return;
-    }
-    if(num<0)
-    {
-        num*=-1;
-        int counter = 0;
-        while (num > 0) {
-            ch[counter] = (int) (num % 10 + 48);
-            counter++;
-            num /= 10;
-        }
-        ch[counter]='-';
-        ch[counter+1] = '\0';
-        strrev(ch);
-        return;
-    }
+    char endname[10];
+    how_many_maps();
+    numberTOstring(number_of_maps-1,endname);
+    char mamad[50]="screenshot";
+    strcat(mamad,endname);
+    strcat(mamad,".bmp");
+    SDL_Surface *sshot = SDL_CreateRGBSurface(0, 1920, 1080, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
+    SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, sshot->pixels, sshot->pitch);
+    SDL_SaveBMP(sshot, mamad);
+    SDL_FreeSurface(sshot);
 }
+
 void show_save()
 {
     SDL_Surface *img = SDL_LoadBMP("save.bmp");
@@ -1795,12 +1879,16 @@ void delete_last_map_save()
             numberTOstring(number_of_maps-1,ch);
             char temp1[20]="arr_colors";
             char temp2[20]="saved";
+            char temp3[20]="screenshot";
+            strcat(temp3,ch);
+            strcat(temp3,".bmp");
             strcat(temp1,ch);
             strcat(temp1,".txt");
             strcat(temp2,ch);
             strcat(temp2,".txt");
             remove(temp1);
             remove(temp2);
+            remove(temp3);
             number_of_maps--;
             write_number_of_maps();
         }
@@ -2294,7 +2382,7 @@ bool map(int which)
     SDL_Texture *textture_waiting= SDL_CreateTextureFromSurface(renderer,img_waiting);
 
     Mix_PlayMusic(music,-1);
-
+    bool take_screen_shot=true;
     while (game_is_running)
     {
         if (counterFPS == 9223372036854775807)
@@ -2305,7 +2393,16 @@ bool map(int which)
         SDL_RenderCopy(renderer, texture, NULL, &texture_rect);
         SDL_ShowCursor(SDL_DISABLE);
         render_blocks(number_of_block, arr_of_colors, arr_of_block, texture_block_khali, texture_block_por);
-
+        if(take_screen_shot)
+        {
+            SDL_RenderPresent(renderer);
+            screenshot();
+            take_screen_shot=false;
+            SDL_RenderClear(renderer);
+            SDL_RenderCopy(renderer, texture, NULL, &texture_rect);
+            SDL_ShowCursor(SDL_DISABLE);
+            render_blocks(number_of_block, arr_of_colors, arr_of_block, texture_block_khali, texture_block_por);
+        }
         while (SDL_PollEvent(&event))
         {
             blockclicked2 = which_block_clicked(arr_of_block, number_of_block, event);
@@ -2339,8 +2436,8 @@ bool map(int which)
         showcursorandsound();
         if(saveandexit)
         {
-           // if(which==-1)
-           //  delete_last_map_save();
+            if(which==-1)
+             delete_last_map_save();
             FILE * fptr;
             fptr= fopen("arr_colors.txt","w");
             fprintf(fptr,"%d\n",number_of_player);
@@ -2588,8 +2685,8 @@ bool map(int which)
         }  //AI
         if (win(arr_of_block,number_of_block))
         {
-     //       if(which==-1)
-     //           delete_last_map_save();
+            if(which==-1)
+                delete_last_map_save();
             write_win_to_file();
             for(int i=0;i<3;i++)
                 write_loseAI_to_file(i);
@@ -2650,8 +2747,8 @@ bool map(int which)
         }
         if(lose(arr_of_block,number_of_block))
         {
-        //    if(which==-1)
-        //      delete_last_map_save();
+            if(which==-1)
+              delete_last_map_save();
             time_t t;
             srand((unsigned) time(&t));
             write_winAI_to_file(rand()%3);
@@ -2711,8 +2808,8 @@ bool map(int which)
             return true;
         }
     }
- //   if(which==-1)
- //     delete_last_map_save();
+    if(which==-1)
+      delete_last_map_save();
     {
         SDL_DestroyTexture(texture);
         SDL_FreeSurface(image);
@@ -2840,60 +2937,85 @@ bool random_map()
     music=NULL;
     return false ;
 }    //true vaqti bargashti ghabl false vaqti bazi baste shod
+int which_map_selected(SDL_Event ev,int scrol)
+{
+    if(ev.type==SDL_MOUSEBUTTONDOWN)
+    {
+        SDL_GetMouseState(&xCursor,&yCursor);
+        how_many_maps();
+        for(int i=0;i<number_of_maps;i++)
+        {
+            if(xCursor>=800 && xCursor<=960+800 && yCursor>=scrol+600*i && yCursor<=scrol+600*i+540)
+            {
+                return i;
+            }
+        }
+    }
+    return -1;
+}
 bool select_map()
 {
+    how_many_maps();
+    int scroll=100;
     while (game_is_running)
     {
         SDL_RenderCopy(renderer, texture, NULL, &texture_rect);
         SDL_ShowCursor(SDL_DISABLE);
-
-        char temp[10]="";
-        char nahaei[50]="NUMBER OF MAPS SAVED = ";
-        how_many_maps();
-        numberTOstring(number_of_maps,temp);
-        strcat(nahaei,temp);
-        show_text(renderer,0,0,name_used_in_menu,60,255,0,0,255);
-
-        show_text(renderer,820,200,nahaei,60,0,240,0,255);
-        show_text(renderer,820,470,"number of map you want =",50,255,0,0,255);
-        if(strcmp(number3,""))
-            show_text(renderer,1520,470,number3,50,255,0,0,255);
-
+        for(int i=0;i<number_of_maps;i++)
+        {
+            char endname[10];
+            numberTOstring(i,endname);
+            char mamad[50]="screenshot";
+            strcat(mamad,endname);
+            strcat(mamad,".bmp");
+            SDL_Surface *temp= SDL_LoadBMP(mamad);
+            SDL_Texture *texturemap= SDL_CreateTextureFromSurface(renderer,temp);
+            SDL_Rect pos;
+            pos.x=800;
+            pos.y=scroll+600*i;
+            pos.w=960;
+            pos.h=540;
+            SDL_RenderCopy(renderer,texturemap,NULL,&pos);
+            SDL_FreeSurface(temp);
+            SDL_DestroyTexture(texturemap);
+            SDL_RectEmpty(&pos);
+        }
         while(SDL_PollEvent(&event))
         {
-            char ch = inputs_string(event);
-            if (('0' <= ch && ch <= '9') || ch == ' ')
-                strncat(number3, &ch, 1);
-            if (ch == SDLK_BACKSPACE && strlen(number3) >= 1)
-                number3[strlen(number3) - 1] = '\0';
-            if (ch == SDLK_RETURN)
-            {
-                int num= stringToNumber(number3);
-                num--;
-                if(num < number_of_maps)
-                {
-                    SDL_DestroyRenderer(renderer);
-                    SDL_DestroyWindow(window);
-                    SDL_DestroyTexture(texture);
-                    SDL_FreeSurface(image);
-                    Mix_FreeMusic(music);
-                    window = NULL;
-                    renderer = NULL;
-                    texture=NULL;
-                    image=NULL;
-                    map(num);
-                    return false;
-                }
-            }
             if(LEADERBOARDback(event))
             {
-                strcpy(number,"");
-                strcpy(number2,"");
-                strcpy(number3,"");
                 return true;
             }
+            check_delete_maps(event);
+            int t=which_map_selected(event,scroll);
+            if(t!=-1)
+            {
+                SDL_DestroyRenderer(renderer);
+                SDL_DestroyWindow(window);
+                SDL_DestroyTexture(texture);
+                SDL_FreeSurface(image);
+                Mix_FreeMusic(music);
+                window = NULL;
+                renderer = NULL;
+                texture=NULL;
+                image=NULL;
+                map(t);
+                return false;
+            }
             check_exit_game(event);
+            if(event.type == SDL_MOUSEWHEEL)
+            {
+                if(event.wheel.y<0 && scroll <100)
+                {
+                    scroll+=20;
+                }
+                if(event.wheel.y>0)
+                {
+                    scroll-=20;
+                }
+            }
         }
+        show_delete_leaderborad();
         showcursorandsoundLEADERBOARD();
         SDL_RenderPresent(renderer);
         SDL_Delay(1000 / FPS);
