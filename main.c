@@ -1,5 +1,4 @@
 #include "functions.h"
-#include "default_funcs.h"
 int main()
 {
     if(!is_ok_to_run_game())
@@ -75,12 +74,25 @@ int main()
       game_is_running=true;
       sound=true;
       run_menu=false;
+      temp1=-1;
+      temp2=-1;
 
       menu();
   }
 
     for (int i = 0; i < NUM_WAR; i++)
-        free(wars[i].head);
+    {
+        struct soldier * temp;
+        struct soldier *current=wars[i].head;
+        while(current->next!=NULL)
+        {
+            temp=current;
+            current=current->next;
+            free(temp);
+        }
+        free(current);
+    }
+
     Mix_Quit();
     SDL_Quit();
 

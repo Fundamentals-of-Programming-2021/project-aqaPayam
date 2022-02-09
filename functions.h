@@ -11,8 +11,12 @@
 #include <string.h>
 #include <math.h>
 #define max_sarbaz 50
-#define NUM_POTOION 12
+#define NUM_POTOION 4
 #define NUM_WAR 100
+#define timeactivepotion 180
+#define timeexistpotion 150
+#define timeAIattack 30
+double Vsoldier=15;
 
 bool saveandexit=false;
 bool your_potion=false;
@@ -22,7 +26,6 @@ int number_of_maps=0;
 char number[50]="";
 char number2[50]="";
 char number3[50]="";
-double Vsoldier=10;
 bool run_menu=false;
 uint32_t color(int r,int g, int b, int a){return    ( (a << 24) + (b<< 16) + (g << 8) + r) ;}
 uint32_t clr[10];
@@ -105,7 +108,8 @@ bool sound=true;
 bool new_user=true;
 char name[200]="";
 char AIname[3][50]={"AI one","AI two","AI three"};
-
+int temp1=-1;
+int temp2=-1;
 //////////////////////////////////////////////
 struct potion pot[NUM_POTOION];
 struct warstatus wars[NUM_WAR];
@@ -412,9 +416,14 @@ bool is_ok_to_run_game()
     }
     if(Mix_Init(MIX_INIT_MP3) <0)
         return false;
+    if(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY,MIX_DEFAULT_FORMAT,2,2048) < 0)
+    {
+        printf("%s",Mix_GetError());
+        return false;
+    }
     return true;
 }///for main
-void render_blocks(int num_block,uint32_t arr[],struct block block[])
+void render_blocks(int num_block,uint32_t arr[],struct block block[],struct potion pts[])
 {
     SDL_Surface *image_block_por = SDL_LoadBMP("block_por.bmp");
     if (!image_block_por)
@@ -425,6 +434,11 @@ void render_blocks(int num_block,uint32_t arr[],struct block block[])
     if (!image_block_khali)
         printf("ridi %s", SDL_GetError());
     SDL_Texture *texture_block_khali = SDL_CreateTextureFromSurface(renderer, image_block_khali);
+
+    SDL_Surface *image_block_active = IMG_Load("activatedblocl.png");
+    if (!image_block_khali)
+        printf("ridi %s", SDL_GetError());
+    SDL_Texture *texture_block_active = SDL_CreateTextureFromSurface(renderer, image_block_active);
 
     for(int i=0;i<num_block;i++)
     {
@@ -439,24 +453,48 @@ void render_blocks(int num_block,uint32_t arr[],struct block block[])
             else if(number_to_string(block[i].number_soldier)==3)
                 show_text(renderer,block[i].xpos-35,block[i].ypos+10,temp_of_function_numberToString,40,255,0,0,255);
         }
-        else
-        {
-            SDL_Rect rect={.x=block[i].xpos-100, .y=block[i].ypos-100,.w=200,.h=200};
-            filledCircleColor(renderer, block[i].xpos, block[i].ypos, 100, arr[block[i].index]);
-            SDL_RenderCopy(renderer,texture_block_por,NULL,&rect);
-            if(number_to_string(block[i].number_soldier)==1)
-                show_text(renderer,block[i].xpos-15,block[i].ypos+5,temp_of_function_numberToString,50,0,255,0,255);
-            else if(number_to_string(block[i].number_soldier)==2)
-                show_text(renderer,block[i].xpos-30,block[i].ypos+5,temp_of_function_numberToString,50,0,0,255,255);
-            else if(number_to_string(block[i].number_soldier)==3)
-                show_text(renderer,block[i].xpos-44,block[i].ypos+5,temp_of_function_numberToString,50,255,0,0,255);
+        else {
+            bool active = false;
+            for (int j = 0; j < NUM_POTOION; j++)
+            {
+                if (pts[j].index == block[i].index && pts[j].exist == true && pts[j].runnig == true) {
+                    active = true;
+                    break;
+                }
+            }
+            if(active)
+            {
+                SDL_Rect rect={.x=block[i].xpos-100, .y=block[i].ypos-100,.w=200,.h=200};
+                filledCircleColor(renderer, block[i].xpos, block[i].ypos, 100, arr[block[i].index]);
+                SDL_RenderCopy(renderer,texture_block_active,NULL,&rect);
+                if(number_to_string(block[i].number_soldier)==1)
+                    show_text(renderer,block[i].xpos-15,block[i].ypos+5,temp_of_function_numberToString,50,0,255,0,255);
+                else if(number_to_string(block[i].number_soldier)==2)
+                    show_text(renderer,block[i].xpos-30,block[i].ypos+5,temp_of_function_numberToString,50,0,0,255,255);
+                else if(number_to_string(block[i].number_soldier)==3)
+                    show_text(renderer,block[i].xpos-44,block[i].ypos+5,temp_of_function_numberToString,50,255,0,0,255);
+            }
+            else
+            {
+                SDL_Rect rect={.x=block[i].xpos-100, .y=block[i].ypos-100,.w=200,.h=200};
+                filledCircleColor(renderer, block[i].xpos, block[i].ypos, 100, arr[block[i].index]);
+                SDL_RenderCopy(renderer,texture_block_por,NULL,&rect);
+                if(number_to_string(block[i].number_soldier)==1)
+                    show_text(renderer,block[i].xpos-15,block[i].ypos+5,temp_of_function_numberToString,50,0,255,0,255);
+                else if(number_to_string(block[i].number_soldier)==2)
+                    show_text(renderer,block[i].xpos-30,block[i].ypos+5,temp_of_function_numberToString,50,0,0,255,255);
+                else if(number_to_string(block[i].number_soldier)==3)
+                    show_text(renderer,block[i].xpos-44,block[i].ypos+5,temp_of_function_numberToString,50,255,0,0,255);
 
+            }
         }
     }
     SDL_FreeSurface(image_block_por);
     SDL_FreeSurface(image_block_khali);
+    SDL_FreeSurface(image_block_active);
     SDL_DestroyTexture(texture_block_khali);
     SDL_DestroyTexture(texture_block_por);
+    SDL_DestroyTexture(texture_block_active);
 
 }///map
 void make_randomcolor(uint32_t arr[],int n)
@@ -764,9 +802,16 @@ struct axis generate_random_potion(struct block arr_block[],int num_block)
         while(b==a)
             b=rand() % num_block;
     }
+    if(arr_block[a].index>0 && arr_block[b].index>0)
+    {
+        temp1 = a;
+        temp2 = b;
+    }
+
     ////
     double num;
-    int k=rand()%100;
+    int k=rand()%60;
+    k+=20;
     num=k/(double)100;
     double num2=1-num;
     ///
@@ -845,14 +890,26 @@ void check_to_active_potion(struct potion all[],struct  warstatus war[])
                                     (current->y - all[i].y) * (current->y - all[i].y));
                     if (R <= 85)
                     {
-                        all[i].runnig = true;
-                        all[i].index = current->index;
-                        fps_potion[i]=0;
-                        if(current->index==0)
-                            your_potion=true;
-                        else
-                            ai_potion=true;
-                        break;
+                        bool ok=true;
+                        for(int q=0;q<NUM_POTOION;q++)
+                        {
+                            if(all[q].runnig==true && all[q].exist==true && all[q].index==current->index)
+                            {
+                                ok=false;
+                                break;
+                            }
+                        }
+                        if(ok)
+                        {
+                            all[i].runnig = true;
+                            all[i].index = current->index;
+                            fps_potion[i]=0;
+                            if(current->index==0)
+                                your_potion=true;
+                            else
+                                ai_potion=true;
+                            break;
+                        }
                     }
                     current = current->next;
                 }
@@ -963,8 +1020,14 @@ void make_game_easy(struct block arr[])
  for(int i=0;i<number_of_block;i++)
         if(arr[i].index==0)
         {
-            arr[i].number_soldier=30;
-            arr[i].number_soldier2=30;
+            arr[i].number_soldier=20;
+            arr[i].number_soldier2=20;
+        }
+    for(int i=0;i<number_of_block;i++)
+        if(arr[i].index>0)
+        {
+            arr[i].number_soldier=20;
+            arr[i].number_soldier2=20;
         }
 }///map
 struct axis AI1(struct block arr[],int numblock)
@@ -1181,6 +1244,66 @@ struct axis AI4(struct block arr[],int numblock)
     p.y=-1;
     return p;
 }//2 ta khoone random ro hamle mide
+struct axis AI5(struct block arr[],int numblock)
+{
+    struct axis temp;
+    time_t t;
+    int soldier;
+    int random_numbers[numblock];{
+        for (int i = 0; i < numblock; i++)
+            random_numbers[i] = -1;
+        int count = 0;
+        srand((unsigned) time(&t));
+        while (count < numblock) {
+            int randNum = rand() % numblock;
+            bool found = false;
+            for (int i = 0; i < count; i++) {
+                if (random_numbers[i] == randNum) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                random_numbers[count] = randNum;
+                count++;
+            }
+        }
+    }
+    for(int i = 0 ;i<numblock;i++)
+    {
+        if( arr[random_numbers[i]].index != 0 && arr[random_numbers[i]].index !=-1)
+        {
+            for (int j = 0; j < numblock; j++)
+            {
+                if (arr[random_numbers[i]].index == arr[random_numbers[j]].index && arr[random_numbers[j]].number_soldier2<10)
+                {
+                    temp.x=random_numbers[i];
+                    temp.y=random_numbers[j];
+                    return temp;
+                }
+            }
+        }
+    }
+    struct axis p;
+    p.x=-1;
+    p.y=-1;
+    return p;
+}//baraye defa hamle mikone
+struct axis AI6(struct block arr[],int numblock)
+{
+    struct axis temp;
+    if(temp1!=-1 && temp2!=-1)
+    {
+        temp.x=temp1;
+        temp.y=temp2;
+        temp1=-1;
+        temp2=-1;
+    }
+    struct axis p;
+    p.x=-1;
+    p.y=-1;
+    return p;
+}//bara gereftan majoon mire
 
 bool win(struct block arr[],int numblock,struct warstatus war[],int numwar)
 {
@@ -1195,7 +1318,7 @@ bool win(struct block arr[],int numblock,struct warstatus war[],int numwar)
         struct soldier *current=war[i%NUM_WAR].head;
         while(current->next!=NULL)
         {
-            if(current->index!=0)
+            if(current->index!=0 && !isnan(current->x) )
             {
                 youwin=false;
             }
@@ -1217,7 +1340,7 @@ bool lose(struct block arr[],int numblock,struct warstatus war[],int numwar)
         struct soldier *current=war[i%NUM_WAR].head;
         while(current->next!=NULL)
         {
-            if(current->index==0)
+            if(current->index==0 && !isnan(current->x))
             {
                 youlose=false;
             }
@@ -1569,7 +1692,7 @@ bool check_delete_leaderboard(SDL_Event ev)
 void delete_all_maps()
 {
     how_many_maps();
-    for(int i=0;i<number_of_maps;i++)
+    for(int i=2;i<number_of_maps;i++)
     {
         char endname[10];
         numberTOstring(i,endname);
@@ -1590,7 +1713,7 @@ void delete_all_maps()
     }
 
     FILE * fptr=fopen("nummaps.txt","w");
-    fprintf(fptr,"%d",0);
+    fprintf(fptr,"%d",2);
     fclose(fptr);
 }///select map
 bool check_delete_maps(SDL_Event ev)
@@ -1939,7 +2062,7 @@ int readfileforleaderboardandsort(struct line lines[]){
         numberTOstring(3*all[i].win-all[i].lose,lines[i].point);
     }
      return number_player;
-}
+}///leaderboard
 bool leaderboard()
 {
     SDL_Surface* iimage = SDL_LoadBMP("leaderboard.bmp");
@@ -1996,13 +2119,8 @@ bool leaderboard()
     return false ;
 }
 
-bool map(int which)
+void generaterandomblock()
 {
-    int blockclicked1=-1;
-    int blockclicked2=-1;
-    if (which==-1)
-    {
-       // scanf("%d %d",&number_of_block,&number_of_player);
         arr_of_block=(struct block *)malloc(number_of_block*sizeof (struct block));
         arr_of_colors=(uint32_t *)malloc(number_of_player*sizeof (uint32_t));
         make_randomcolor(arr_of_colors,number_of_player);
@@ -2035,7 +2153,7 @@ bool map(int which)
                 if (i < number_of_player)
                     arr_of_block[i].index=i;
             }
-//            printf("%d ",random_numbers[i]);
+
             make_game_easy(arr_of_block);
 
         }  //inja miad arr_of_block ro random tarif mikone az all block
@@ -2048,216 +2166,217 @@ bool map(int which)
         char mamad[50]="arr_colors";
         strcat(mamad,endname);
         strcat(mamad,".txt");
-                /////
-            FILE * fptr;
+        /////
+        FILE * fptr;
 
-            fptr= fopen(mamad,"w");
-            fprintf(fptr,"%d\n",number_of_player);
-            for(int i=1;i<number_of_player;i++)
-                for(int j=0;j<10;j++)
-                    if(arr_of_colors[i]==clr[j])
-                        fprintf(fptr,"%d ",j);
+        fptr= fopen(mamad,"w");
+        fprintf(fptr,"%d\n",number_of_player);
+        for(int i=1;i<number_of_player;i++)
+            for(int j=0;j<10;j++)
+                if(arr_of_colors[i]==clr[j])
+                    fprintf(fptr,"%d ",j);
 
-            strcpy(mamad,"saved");
-            strcat(mamad,endname);
-            strcat(mamad,".txt");
+        strcpy(mamad,"saved");
+        strcat(mamad,endname);
+        strcat(mamad,".txt");
 
-            fclose(fptr);
+        fclose(fptr);
 
-            fptr=fopen(mamad,"w");
-            fprintf(fptr,"%d\n",number_of_block);
-            for(int i=0;i<number_of_block;i++)
+        fptr=fopen(mamad,"w");
+        fprintf(fptr,"%d\n",number_of_block);
+        for(int i=0;i<number_of_block;i++)
+        {
+            fprintf(fptr,"%d ",arr_of_block[i].index);
+            fprintf(fptr,"%d ",arr_of_block[i].xpos);
+            fprintf(fptr,"%d ",arr_of_block[i].ypos);
+            fprintf(fptr,"%d ",arr_of_block[i].number_soldier);
+            fprintf(fptr,"%d ",arr_of_block[i].number_soldier2);
+            fprintf(fptr,"%d ",arr_of_block[i].nolimit);
+            fprintf(fptr,"%d\n",arr_of_block[i].fastblock);
+        }
+
+        fprintf(fptr,"%d\n",number_of_attack);
+        for(int i=0;i<number_of_attack;i++)
+        {
+            fprintf(fptr,"%d ",wars[i].att);
+            fprintf(fptr,"%d ",wars[i].def);
+            fprintf(fptr,"%d ",wars[i].num_soldier);
+            fprintf(fptr,"%d\n",wars[i].counter);
+            struct soldier *current=wars[i].head;
+            while(current->next!=NULL)
             {
-                fprintf(fptr,"%d ",arr_of_block[i].index);
-                fprintf(fptr,"%d ",arr_of_block[i].xpos);
-                fprintf(fptr,"%d ",arr_of_block[i].ypos);
-                fprintf(fptr,"%d ",arr_of_block[i].number_soldier);
-                fprintf(fptr,"%d ",arr_of_block[i].number_soldier2);
-                fprintf(fptr,"%d ",arr_of_block[i].nolimit);
-                fprintf(fptr,"%d\n",arr_of_block[i].fastblock);
+                fprintf(fptr,"%lf ",current->x);
+                fprintf(fptr,"%lf ",current->y);
+                fprintf(fptr,"%lf ",current->vx);
+                fprintf(fptr,"%lf ",current->vy);
+                fprintf(fptr,"%d ",current->num_dest_block);
+                fprintf(fptr,"%d ",current->num_beg_block);
+                fprintf(fptr,"%d ",current->index);
+                fprintf(fptr,"%d ",current->fast_run);
+                fprintf(fptr,"%d ",current->stop);
+                fprintf(fptr,"%d ",current->destx);
+                fprintf(fptr,"%d\n",current->desty);
+                current=current->next;
             }
+            fprintf(fptr,"%lf ",0.0);
+            fprintf(fptr,"%lf ",0.0);
+            fprintf(fptr,"%lf ",0.0);
+            fprintf(fptr,"%lf ",0.0);
+            fprintf(fptr,"%d ",0);
+            fprintf(fptr,"%d ",0);
+            fprintf(fptr,"%d ",0);
+            fprintf(fptr,"%d ",0);
+            fprintf(fptr,"%d ",0);
+            fprintf(fptr,"%d ",0);
+            fprintf(fptr,"%d\n",0);
 
-            fprintf(fptr,"%d\n",number_of_attack);
-            for(int i=0;i<number_of_attack;i++)
+        }
+
+        fprintf(fptr,"%d\n",NUM_POTOION);
+        for(int i=0;i<NUM_POTOION;i++)
+        {
+            fprintf(fptr,"%d ",pot[i].x);
+            fprintf(fptr,"%d ",pot[i].y);
+            fprintf(fptr,"%d ",pot[i].index);
+            fprintf(fptr,"%d ",pot[i].exist);
+            fprintf(fptr,"%d\n",pot[i].runnig);
+        }
+        fprintf(fptr,"%d ",your_potion);
+        fprintf(fptr,"%d ",ai_potion);
+        fprintf(fptr,"%lld ",countai);
+        fprintf(fptr,"%lld\n",counterFPS);
+        for(int i=0;i<NUM_POTOION;i++)
+            fprintf(fptr,"%d ",fps_potion[i]);
+
+        fclose(fptr);
+        // printf("new map saved\n");
+        number_of_maps++;
+        write_number_of_maps();
+}//map
+void load_az_ghabl_continue()
+{
+    int temp;
+    FILE * fptr;
+    fptr=fopen("arr_colors.txt","r");
+    fscanf(fptr," %d",&number_of_player);
+    arr_of_colors=(uint32_t *)malloc(number_of_player*sizeof (uint32_t));
+    for(int i=1;i<number_of_player;i++)
+    {
+        fscanf(fptr," %d",&temp);
+        arr_of_colors[i]=clr[temp];
+    }
+    arr_of_colors[0]=clr[0];
+    fclose(fptr);
+    //////////////////////////////////////////
+    fptr=fopen("saved.txt","r");
+    fscanf(fptr," %d",&number_of_block);
+    arr_of_block=(struct block *)malloc(number_of_block*sizeof (struct block));
+    for(int i=0;i<number_of_block;i++)
+    {
+        fscanf(fptr," %d",&arr_of_block[i].index);
+        fscanf(fptr," %d",&arr_of_block[i].xpos);
+        fscanf(fptr," %d",&arr_of_block[i].ypos);
+        fscanf(fptr," %d",&arr_of_block[i].number_soldier);
+        fscanf(fptr," %d",&arr_of_block[i].number_soldier2);
+        fscanf(fptr," %d",&temp);
+        if(temp==1)
+            arr_of_block[i].nolimit=true;
+        else
+            arr_of_block[i].nolimit=false;
+        fscanf(fptr," %d",&temp);
+        if(temp==1)
+            arr_of_block[i].fastblock=true;
+        else
+            arr_of_block[i].fastblock=false;
+
+    }
+
+    fscanf(fptr," %d",&number_of_attack);
+    for(int i=0;i<number_of_attack;i++)
+    {
+        fscanf(fptr," %d",&wars[i].att);
+        fscanf(fptr," %d",&wars[i].def);
+        fscanf(fptr," %d",&wars[i].num_soldier);
+        fscanf(fptr," %d",&wars[i].counter);
+        struct soldier sarbaz;
+        while(1)
+        {
+            fscanf(fptr," %lf",&sarbaz.x);
+            fscanf(fptr," %lf",&sarbaz.y);
+            fscanf(fptr," %lf",&sarbaz.vx);
+            fscanf(fptr," %lf",&sarbaz.vy);
+            fscanf(fptr," %d",&sarbaz.num_dest_block);
+            fscanf(fptr," %d",&sarbaz.num_beg_block);
+            fscanf(fptr," %d",&sarbaz.index);
+            fscanf(fptr," %d",&temp);
+            if(temp==1)
+                sarbaz.fast_run=true;
+            else
+                sarbaz.fast_run=false;
+            fscanf(fptr," %d",&temp);
+            if(temp==1)
+                sarbaz.stop=true;
+            else
+                sarbaz.stop=false;
+            fscanf(fptr," %d",&sarbaz.destx);
+            fscanf(fptr," %d",&sarbaz.desty);
+            if(sarbaz.x==0 && sarbaz.y==0)
             {
-                fprintf(fptr,"%d ",wars[i].att);
-                fprintf(fptr,"%d ",wars[i].def);
-                fprintf(fptr,"%d ",wars[i].num_soldier);
-                fprintf(fptr,"%d\n",wars[i].counter);
+                break;
+            }
+            else
+            {
                 struct soldier *current=wars[i].head;
                 while(current->next!=NULL)
                 {
-                    fprintf(fptr,"%lf ",current->x);
-                    fprintf(fptr,"%lf ",current->y);
-                    fprintf(fptr,"%lf ",current->vx);
-                    fprintf(fptr,"%lf ",current->vy);
-                    fprintf(fptr,"%d ",current->num_dest_block);
-                    fprintf(fptr,"%d ",current->num_beg_block);
-                    fprintf(fptr,"%d ",current->index);
-                    fprintf(fptr,"%d ",current->fast_run);
-                    fprintf(fptr,"%d ",current->stop);
-                    fprintf(fptr,"%d ",current->destx);
-                    fprintf(fptr,"%d\n",current->desty);
                     current=current->next;
                 }
-                fprintf(fptr,"%lf ",0.0);
-                fprintf(fptr,"%lf ",0.0);
-                fprintf(fptr,"%lf ",0.0);
-                fprintf(fptr,"%lf ",0.0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d\n",0);
-
+                sarbaz.next=(struct soldier*)malloc(sizeof(struct soldier));
+                *current=sarbaz;
+                current->next->next=NULL;
             }
-
-            fprintf(fptr,"%d\n",NUM_POTOION);
-            for(int i=0;i<NUM_POTOION;i++)
-            {
-                fprintf(fptr,"%d ",pot[i].x);
-                fprintf(fptr,"%d ",pot[i].y);
-                fprintf(fptr,"%d ",pot[i].index);
-                fprintf(fptr,"%d ",pot[i].exist);
-                fprintf(fptr,"%d\n",pot[i].runnig);
-            }
-            fprintf(fptr,"%d ",your_potion);
-            fprintf(fptr,"%d ",ai_potion);
-            fprintf(fptr,"%lld ",countai);
-            fprintf(fptr,"%lld\n",counterFPS);
-            for(int i=0;i<NUM_POTOION;i++)
-                fprintf(fptr,"%d ",fps_potion[i]);
-
-            fclose(fptr);
-           // printf("new map saved\n");
-            number_of_maps++;
-            write_number_of_maps();
-
-    } ///voroodi begire random bede
-    else if(which==-2) ///load az ghabl
-        {
-            int temp;
-            FILE * fptr;
-            fptr=fopen("arr_colors.txt","r");
-            fscanf(fptr," %d",&number_of_player);
-            arr_of_colors=(uint32_t *)malloc(number_of_player*sizeof (uint32_t));
-            for(int i=1;i<number_of_player;i++)
-            {
-                fscanf(fptr," %d",&temp);
-                arr_of_colors[i]=clr[temp];
-            }
-            arr_of_colors[0]=clr[0];
-            fclose(fptr);
-            //////////////////////////////////////////
-            fptr=fopen("saved.txt","r");
-            fscanf(fptr," %d",&number_of_block);
-            arr_of_block=(struct block *)malloc(number_of_block*sizeof (struct block));
-            for(int i=0;i<number_of_block;i++)
-            {
-                fscanf(fptr," %d",&arr_of_block[i].index);
-                fscanf(fptr," %d",&arr_of_block[i].xpos);
-                fscanf(fptr," %d",&arr_of_block[i].ypos);
-                fscanf(fptr," %d",&arr_of_block[i].number_soldier);
-                fscanf(fptr," %d",&arr_of_block[i].number_soldier2);
-                fscanf(fptr," %d",&temp);
-                if(temp==1)
-                    arr_of_block[i].nolimit=true;
-                else
-                    arr_of_block[i].nolimit=false;
-                fscanf(fptr," %d",&temp);
-                if(temp==1)
-                    arr_of_block[i].fastblock=true;
-                else
-                    arr_of_block[i].fastblock=false;
-
-            }
-
-            fscanf(fptr," %d",&number_of_attack);
-            for(int i=0;i<number_of_attack;i++)
-            {
-                fscanf(fptr," %d",&wars[i].att);
-                fscanf(fptr," %d",&wars[i].def);
-                fscanf(fptr," %d",&wars[i].num_soldier);
-                fscanf(fptr," %d",&wars[i].counter);
-                struct soldier sarbaz;
-                while(1)
-                {
-                    fscanf(fptr," %lf",&sarbaz.x);
-                    fscanf(fptr," %lf",&sarbaz.y);
-                    fscanf(fptr," %lf",&sarbaz.vx);
-                    fscanf(fptr," %lf",&sarbaz.vy);
-                    fscanf(fptr," %d",&sarbaz.num_dest_block);
-                    fscanf(fptr," %d",&sarbaz.num_beg_block);
-                    fscanf(fptr," %d",&sarbaz.index);
-                    fscanf(fptr," %d",&temp);
-                    if(temp==1)
-                        sarbaz.fast_run=true;
-                    else
-                        sarbaz.fast_run=false;
-                    fscanf(fptr," %d",&temp);
-                    if(temp==1)
-                        sarbaz.stop=true;
-                    else
-                        sarbaz.stop=false;
-                    fscanf(fptr," %d",&sarbaz.destx);
-                    fscanf(fptr," %d",&sarbaz.desty);
-                    if(sarbaz.x==0 && sarbaz.y==0)
-                        break;
-                    else
-                    {
-                        struct soldier *current=wars[i].head;
-                        while(current->next!=NULL)
-                        {
-                            current=current->next;
-                        }
-                        sarbaz.next=(struct soldier*)malloc(sizeof(struct soldier));
-                        *current=sarbaz;
-                        current->next->next=NULL;
-                    }
-                }
-            }
-            fscanf(fptr," %d",&temp);
-            for(int i=0;i<NUM_POTOION;i++)
-            {
-                fscanf(fptr," %d",&pot[i].x);
-                fscanf(fptr," %d",&pot[i].y);
-                fscanf(fptr," %d",&pot[i].index);
-                fscanf(fptr," %d",&temp);
-                if(temp==1)
-                    pot[i].exist=true;
-                else
-                    pot[i].exist=false;
-
-                fscanf(fptr," %d",&temp);
-                if(temp==1)
-                    pot[i].runnig=true;
-                else
-                    pot[i].runnig=false;
-            }
-
-
-            fscanf(fptr," %d",&temp);
-            if(temp==1)
-                your_potion=true;
-            else
-                your_potion=false;
-            fscanf(fptr," %d",&temp);
-            if(temp==1)
-                ai_potion=true;
-            else
-                ai_potion=false;
-            fscanf(fptr," %lld",&countai);
-            fscanf(fptr," %lld",&counterFPS);
-            for(int i=0;i<NUM_POTOION;i++)
-                fscanf(fptr," %d",&fps_potion[i]);
-
-            fclose(fptr);
-         //   printf("loaded\n");
         }
-    else    ///map az ghabl sakhte shode
+    }
+    fscanf(fptr," %d",&temp);
+    for(int i=0;i<NUM_POTOION;i++)
     {
+        fscanf(fptr," %d",&pot[i].x);
+        fscanf(fptr," %d",&pot[i].y);
+        fscanf(fptr," %d",&pot[i].index);
+        fscanf(fptr," %d",&temp);
+        if(temp==1)
+            pot[i].exist=true;
+        else
+            pot[i].exist=false;
+
+        fscanf(fptr," %d",&temp);
+        if(temp==1)
+            pot[i].runnig=true;
+        else
+            pot[i].runnig=false;
+    }
+
+
+    fscanf(fptr," %d",&temp);
+    if(temp==1)
+        your_potion=true;
+    else
+        your_potion=false;
+    fscanf(fptr," %d",&temp);
+    if(temp==1)
+        ai_potion=true;
+    else
+        ai_potion=false;
+    fscanf(fptr," %lld",&countai);
+    fscanf(fptr," %lld",&counterFPS);
+    for(int i=0;i<NUM_POTOION;i++)
+        fscanf(fptr," %d",&fps_potion[i]);
+
+    fclose(fptr);
+    //   printf("loaded\n");
+}//map
+void load_azghabl(int which)
+{
         int temp;
         FILE * fptr;
         char name_color[50]="arr_colors";
@@ -2269,7 +2388,7 @@ bool map(int which)
         if(fptr==NULL)
         {
             printf("file vojood nadare \n");
-            return false;
+            return ;
         }
         fscanf(fptr," %d",&number_of_player);
         arr_of_colors=(uint32_t *)malloc(number_of_player*sizeof (uint32_t));
@@ -2288,7 +2407,7 @@ bool map(int which)
         if(fptr==NULL)
         {
             printf("file vojood nadare \n");
-            return false ;
+            return ;
         }
 
         fscanf(fptr," %d",&number_of_block);
@@ -2393,20 +2512,118 @@ bool map(int which)
             fscanf(fptr," %d",&fps_potion[i]);
 
         fclose(fptr);
-        printf("loaded\n");
-    }
+       // printf("loaded\n");
+}//map
+void saveexit(int which)
+{
+    SDL_Surface *img_waiting= SDL_LoadBMP("waiting.bmp");
+    if(!img_waiting)
+        printf("ridi %s", SDL_GetError());
+    SDL_Texture *textture_waiting= SDL_CreateTextureFromSurface(renderer,img_waiting);
 
-    ///berim hala karaye rendering
-    if(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY,MIX_DEFAULT_FORMAT,2,2048) < 0)
-        printf("%s",Mix_GetError());
+    if(which==-1)
+        delete_last_map_save();
+    FILE * fptr;
+    fptr= fopen("arr_colors.txt","w");
+    fprintf(fptr,"%d\n",number_of_player);
+    for(int i=1;i<number_of_player;i++)
+        for(int j=0;j<10;j++)
+            if(arr_of_colors[i]==clr[j])
+                fprintf(fptr,"%d ",j);
+    fclose(fptr);
+    fptr=fopen("saved.txt","w");
+    fprintf(fptr,"%d\n",number_of_block);
+    for(int i=0;i<number_of_block;i++)
+    {
+        fprintf(fptr,"%d ",arr_of_block[i].index);
+        fprintf(fptr,"%d ",arr_of_block[i].xpos);
+        fprintf(fptr,"%d ",arr_of_block[i].ypos);
+        fprintf(fptr,"%d ",arr_of_block[i].number_soldier);
+        fprintf(fptr,"%d ",arr_of_block[i].number_soldier2);
+        fprintf(fptr,"%d ",arr_of_block[i].nolimit);
+        fprintf(fptr,"%d\n",arr_of_block[i].fastblock);
+    }
+    fprintf(fptr,"%d\n",number_of_attack);
+    for(int i=0;i<number_of_attack;i++)
+    {
+        fprintf(fptr,"%d ",wars[i].att);
+        fprintf(fptr,"%d ",wars[i].def);
+        fprintf(fptr,"%d ",wars[i].num_soldier);
+        fprintf(fptr,"%d\n",wars[i].counter);
+        struct soldier *current=wars[i].head;
+        while(current->next!=NULL)
+        {
+            fprintf(fptr,"%lf ",current->x);
+            fprintf(fptr,"%lf ",current->y);
+            fprintf(fptr,"%lf ",current->vx);
+            fprintf(fptr,"%lf ",current->vy);
+            fprintf(fptr,"%d ",current->num_dest_block);
+            fprintf(fptr,"%d ",current->num_beg_block);
+            fprintf(fptr,"%d ",current->index);
+            fprintf(fptr,"%d ",current->fast_run);
+            fprintf(fptr,"%d ",current->stop);
+            fprintf(fptr,"%d ",current->destx);
+            fprintf(fptr,"%d\n",current->desty);
+            current=current->next;
+        }
+        fprintf(fptr,"%lf ",0.0);
+        fprintf(fptr,"%lf ",0.0);
+        fprintf(fptr,"%lf ",0.0);
+        fprintf(fptr,"%lf ",0.0);
+        fprintf(fptr,"%d ",0);
+        fprintf(fptr,"%d ",0);
+        fprintf(fptr,"%d ",0);
+        fprintf(fptr,"%d ",0);
+        fprintf(fptr,"%d ",0);
+        fprintf(fptr,"%d ",0);
+        fprintf(fptr,"%d\n",0);
+
+    }
+    fprintf(fptr,"%d\n",NUM_POTOION);
+    for(int i=0;i<NUM_POTOION;i++)
+    {
+        fprintf(fptr,"%d ",pot[i].x);
+        fprintf(fptr,"%d ",pot[i].y);
+        fprintf(fptr,"%d ",pot[i].index);
+        fprintf(fptr,"%d ",pot[i].exist);
+        fprintf(fptr,"%d\n",pot[i].runnig);
+    }
+    fprintf(fptr,"%d ",your_potion);
+    fprintf(fptr,"%d ",ai_potion);
+    fprintf(fptr,"%lld ",countai);
+    fprintf(fptr,"%lld\n",counterFPS);
+    for(int i=0;i<NUM_POTOION;i++)
+        fprintf(fptr,"%d ",fps_potion[i]);
+    fclose(fptr);
+
+    SDL_RenderCopy(renderer,textture_waiting,NULL,&texture_rect);
+    SDL_RenderPresent(renderer);
+    SDL_Delay(2500);
+
+    SDL_DestroyTexture(textture_waiting);
+    SDL_FreeSurface(img_waiting);
+
+    run_menu=true;
+}//map
+bool map(int which)
+{
+    int blockclicked1=-1;
+    int blockclicked2=-1;
+    if (which==-1)
+        generaterandomblock();
+    else if(which==-2)
+        load_az_ghabl_continue();
+    else
+        load_azghabl(which);
+
     music = Mix_LoadMUS("music_war2.mp3");
     Mix_Music *warningmusic=Mix_LoadMUS("potionmusic.mp3");
-
     window = SDL_CreateWindow("game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               SCREEN_WIDTH,
                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
     SDL_SetWindowBordered(window, SDL_WINDOW_FULLSCREEN);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
+
     image = SDL_LoadBMP("map_war2.bmp");
     if (!image)
         printf("ridi %s", SDL_GetError());
@@ -2416,15 +2633,14 @@ bool map(int which)
     if (!warningimg)
         printf("ridi %s", SDL_GetError());
     SDL_Texture  *warningtxt = SDL_CreateTextureFromSurface(renderer, warningimg);
-
-    SDL_Surface *img_waiting= SDL_LoadBMP("waiting.bmp");
-    SDL_Texture *textture_waiting= SDL_CreateTextureFromSurface(renderer,img_waiting);
+    SDL_SetTextureAlphaMod(warningtxt,150);
 
     Mix_PlayMusic(music,-1);
     bool take_screen_shot=true;
+    int tempcounter=0;
+    bool tempshow=false;
     while (game_is_running)
     {
-        printf("%d\n",number_of_attack);
         if (counterFPS == 9223372036854775807)
             counterFPS = 0;
         if (countai == 9223372036854775807)
@@ -2432,8 +2648,8 @@ bool map(int which)
         counterFPS++;
         SDL_RenderCopy(renderer, texture, NULL, &texture_rect);
         SDL_ShowCursor(SDL_DISABLE);
-        render_blocks(number_of_block, arr_of_colors, arr_of_block);
-        if(take_screen_shot)
+        render_blocks(number_of_block, arr_of_colors, arr_of_block,pot);
+        if(take_screen_shot && which==-1)
         {
             SDL_RenderPresent(renderer);
             screenshot();
@@ -2441,7 +2657,7 @@ bool map(int which)
             SDL_RenderClear(renderer);
             SDL_RenderCopy(renderer, texture, NULL, &texture_rect);
             SDL_ShowCursor(SDL_DISABLE);
-            render_blocks(number_of_block, arr_of_colors, arr_of_block);
+            render_blocks(number_of_block, arr_of_colors, arr_of_block,pot);
         }
         while (SDL_PollEvent(&event))
         {
@@ -2452,136 +2668,49 @@ bool map(int which)
         }
         moving_soldiers(wars, arr_of_block);
         check_to_active_potion(pot, wars);
-
+        ////
         if (ai_potion == true)
         {
-            SDL_RenderCopy(renderer, warningtxt, NULL, &texture_rect);
-            SDL_RenderPresent(renderer);
-            SDL_Delay(1000);
+            tempshow=true;
+            tempcounter=0;
         }
         ai_potion = false;
-
+        if(tempshow && tempcounter<timeactivepotion)
+        {
+            SDL_RenderCopy(renderer, warningtxt, NULL, &texture_rect);
+            tempcounter++;
+        }
+        if(tempcounter>=timeactivepotion)
+        {
+            tempcounter=0;
+            tempshow=false;
+        }
         if (your_potion == true) {
             Mix_PlayMusic(warningmusic, 1);
         }
         your_potion = false;
-
         if (!Mix_PlayingMusic())
             Mix_PlayMusic(music, -1);
-
+        ///
         run_potion(pot, wars, arr_of_block, number_of_block);
         render_potion(pot);
         render_soldier(wars, number_of_attack, arr_of_colors, arr_of_block);
         show_save();
         showcursorandsound();
-        if(saveandexit)
-        {
-            if(which==-1)
-             delete_last_map_save();
-            FILE * fptr;
-            fptr= fopen("arr_colors.txt","w");
-            fprintf(fptr,"%d\n",number_of_player);
-            for(int i=1;i<number_of_player;i++)
-                for(int j=0;j<10;j++)
-                    if(arr_of_colors[i]==clr[j])
-                        fprintf(fptr,"%d ",j);
-            fclose(fptr);
-            fptr=fopen("saved.txt","w");
-            fprintf(fptr,"%d\n",number_of_block);
-            for(int i=0;i<number_of_block;i++)
-            {
-                fprintf(fptr,"%d ",arr_of_block[i].index);
-                fprintf(fptr,"%d ",arr_of_block[i].xpos);
-                fprintf(fptr,"%d ",arr_of_block[i].ypos);
-                fprintf(fptr,"%d ",arr_of_block[i].number_soldier);
-                fprintf(fptr,"%d ",arr_of_block[i].number_soldier2);
-                fprintf(fptr,"%d ",arr_of_block[i].nolimit);
-                fprintf(fptr,"%d\n",arr_of_block[i].fastblock);
-            }
-
-            fprintf(fptr,"%d\n",number_of_attack);
-            for(int i=0;i<number_of_attack;i++)
-            {
-                fprintf(fptr,"%d ",wars[i].att);
-                fprintf(fptr,"%d ",wars[i].def);
-                fprintf(fptr,"%d ",wars[i].num_soldier);
-                fprintf(fptr,"%d\n",wars[i].counter);
-                struct soldier *current=wars[i].head;
-                while(current->next!=NULL)
-                {
-                    fprintf(fptr,"%lf ",current->x);
-                    fprintf(fptr,"%lf ",current->y);
-                    fprintf(fptr,"%lf ",current->vx);
-                    fprintf(fptr,"%lf ",current->vy);
-                    fprintf(fptr,"%d ",current->num_dest_block);
-                    fprintf(fptr,"%d ",current->num_beg_block);
-                    fprintf(fptr,"%d ",current->index);
-                    fprintf(fptr,"%d ",current->fast_run);
-                    fprintf(fptr,"%d ",current->stop);
-                    fprintf(fptr,"%d ",current->destx);
-                    fprintf(fptr,"%d\n",current->desty);
-                    current=current->next;
-                }
-                fprintf(fptr,"%lf ",0.0);
-                fprintf(fptr,"%lf ",0.0);
-                fprintf(fptr,"%lf ",0.0);
-                fprintf(fptr,"%lf ",0.0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d ",0);
-                fprintf(fptr,"%d\n",0);
-
-            }
-
-            fprintf(fptr,"%d\n",NUM_POTOION);
-            for(int i=0;i<NUM_POTOION;i++)
-            {
-                fprintf(fptr,"%d ",pot[i].x);
-                fprintf(fptr,"%d ",pot[i].y);
-                fprintf(fptr,"%d ",pot[i].index);
-                fprintf(fptr,"%d ",pot[i].exist);
-                fprintf(fptr,"%d\n",pot[i].runnig);
-            }
-            fprintf(fptr,"%d ",your_potion);
-            fprintf(fptr,"%d ",ai_potion);
-            fprintf(fptr,"%lld ",countai);
-            fprintf(fptr,"%lld\n",counterFPS);
-            for(int i=0;i<NUM_POTOION;i++)
-                fprintf(fptr,"%d ",fps_potion[i]);
-
-            fclose(fptr);
-
-            SDL_RenderCopy(renderer,textture_waiting,NULL,&texture_rect);
-            SDL_RenderPresent(renderer);
-            SDL_Delay(1000);
-            {
-                SDL_DestroyTexture(texture);
-                SDL_FreeSurface(image);
-                Mix_FreeMusic(music);
-
-                SDL_DestroyTexture(warningtxt);
-                SDL_FreeSurface(warningimg);
-                Mix_FreeMusic(warningmusic);
-
-                SDL_DestroyTexture(textture_waiting);
-                SDL_FreeSurface(img_waiting);
-
-                SDL_DestroyRenderer(renderer);
-                SDL_DestroyWindow(window);
-                window = NULL;
-                renderer = NULL;
-                texture=NULL;
-                image=NULL;
-                music=NULL;
-
-            }
-           // printf("saved\n");
-            run_menu=true;
+        if(saveandexit){
+            saveexit(which);
+            free(arr_of_block);
+            free(arr_of_colors);
+            Mix_FreeMusic(music);
+            Mix_FreeMusic(warningmusic);
+            SDL_FreeSurface(image);
+            SDL_FreeSurface(warningimg);
+            SDL_DestroyTexture(texture);
+            SDL_DestroyTexture(warningtxt);
+            SDL_DestroyRenderer(renderer);
+            SDL_DestroyWindow(window);
             return true;
-        }  //inja bayad bazi save va baste beshe
+        } //inja bayad bazi save va baste beshe
         if(blockclicked1 != -1 && blockclicked2 == -1)
         {
             rasm_khat(arr_of_block,blockclicked1);
@@ -2589,8 +2718,7 @@ bool map(int which)
         SDL_RenderPresent(renderer);
         SDL_Delay(1000 / FPS);
         SDL_RenderClear(renderer);
-        if (counterFPS % 60 == 0)  //har 1 sanie ba ehtemal 50%
-        {
+        if (counterFPS % 30 == 0){
             time_t t;
             srand((unsigned) time(&t));
             int pp=rand()%2;
@@ -2610,20 +2738,20 @@ bool map(int which)
                     pot[tmp].runnig = false;
                 }
             }
-        }
+        }//har 1 sanie ba ehtemal kamtar az 50% potion toolid she
         if (counterFPS % 60 == 0) {
             for (int i = 0; i < number_of_block; i++) {
                 if (arr_of_block[i].index != -1) {
                     if (arr_of_block[i].nolimit == true && arr_of_block[i].fastblock == true) {
-                        arr_of_block[i].number_soldier += 2;
-                        arr_of_block[i].number_soldier2 += 2;
+                        arr_of_block[i].number_soldier += 5;
+                        arr_of_block[i].number_soldier2 += 5;
                     } else if (arr_of_block[i].nolimit == true && arr_of_block[i].fastblock == false) {
                         arr_of_block[i].number_soldier++;
                         arr_of_block[i].number_soldier2++;
                     } else if (arr_of_block[i].nolimit == false && arr_of_block[i].fastblock == true) {
                         if (arr_of_block[i].number_soldier < max_sarbaz) {
-                            arr_of_block[i].number_soldier += 2;
-                            arr_of_block[i].number_soldier2 += 2;
+                            arr_of_block[i].number_soldier += 5;
+                            arr_of_block[i].number_soldier2 += 5;
                         }
 
                     } else if (arr_of_block[i].nolimit == false && arr_of_block[i].fastblock == false) {
@@ -2667,12 +2795,12 @@ bool map(int which)
         {
             if (pot[i].exist == true)
                 fps_potion[i]++;
-            if (fps_potion[i] > 150 && pot[i].runnig == false)
+            if (fps_potion[i] > timeexistpotion && pot[i].runnig == false)
             {
                 pot[i].exist = false;
                 pot[i].runnig = false;
             }
-            if (fps_potion[i] > 300 && pot[i].runnig == true)
+            if (fps_potion[i] > timeactivepotion && pot[i].runnig == true)
             {
                 if (pot[i].index == 0)
                     your_potion = false;
@@ -2684,20 +2812,23 @@ bool map(int which)
             }
         } //zaman bandi az bein bordan potion
         struct axis AIatack ;
-        if (counterFPS % 100==0 )
+        if (counterFPS % timeAIattack==0 )
         {
             countai++;
-            if(countai%4==0)
+            if(countai%6==0)
                 AIatack = AI1(arr_of_block, number_of_block);
-            else if(countai %4==1)
+            else if(countai %6==1)
                 AIatack = AI2(arr_of_block, number_of_block);
-            else if(countai %4==2)
+            else if(countai %6==2)
                 AIatack = AI3(arr_of_block, number_of_block);
-            else if(countai %4==3)
+            else if(countai %6==3)
                 AIatack = AI4(arr_of_block, number_of_block);
+            else if(countai %6==4)
+                AIatack = AI5(arr_of_block, number_of_block);
+            else if(countai %6==5)
+                AIatack = AI6(arr_of_block, number_of_block);
             if (AIatack.x != -1 && AIatack.y != -1)
             {
-              //  printf("%d %d\n", AIatack.x, AIatack.y);
                 wars[number_of_attack%NUM_WAR].def = AIatack.y;
                 wars[number_of_attack%NUM_WAR].att = AIatack.x;
                 wars[number_of_attack%NUM_WAR].num_soldier = arr_of_block[AIatack.x].number_soldier2;
@@ -2713,38 +2844,29 @@ bool map(int which)
             write_win_to_file();
             for(int i=0;i<3;i++)
                 write_loseAI_to_file(i);
-
+            Mix_PauseMusic();
+            SDL_DestroyTexture(texture);
+            SDL_FreeSurface(image);
             image= IMG_Load("win.jpg");
             texture= SDL_CreateTextureFromSurface(renderer,image);
             SDL_RenderCopy(renderer,texture,NULL,&texture_rect);
             if(strcmp(name,""))
                 show_text(renderer,50,50,name,120,0,255,0,255);
             show_text(renderer,50,170,"WIN",120,0,255,0,255);
-           // printf("win");
+            show_text(renderer,50,710,"HITLER NARAHAT SHOD",120,255,0,0,255);
             SDL_RenderPresent(renderer);
-            SDL_Delay(3000);
+            SDL_Delay(5000);
+            free(arr_of_block);
+            free(arr_of_colors);
+            Mix_FreeMusic(music);
+            Mix_FreeMusic(warningmusic);
+            SDL_FreeSurface(image);
+            SDL_FreeSurface(warningimg);
+            SDL_DestroyTexture(texture);
+            SDL_DestroyTexture(warningtxt);
+            SDL_DestroyRenderer(renderer);
+            SDL_DestroyWindow(window);
             run_menu=true;
-            {
-                SDL_DestroyTexture(texture);
-                SDL_FreeSurface(image);
-                Mix_FreeMusic(music);
-
-                SDL_DestroyTexture(warningtxt);
-                SDL_FreeSurface(warningimg);
-                Mix_FreeMusic(warningmusic);
-
-                SDL_DestroyTexture(textture_waiting);
-                SDL_FreeSurface(img_waiting);
-
-                SDL_DestroyRenderer(renderer);
-                SDL_DestroyWindow(window);
-                window = NULL;
-                renderer = NULL;
-                texture=NULL;
-                image=NULL;
-                music=NULL;
-
-            }
             return true;
         }
         if(lose(arr_of_block,number_of_block,wars,number_of_attack))
@@ -2755,65 +2877,51 @@ bool map(int which)
             srand((unsigned) time(&t));
             write_winAI_to_file(rand()%3);
             write_lose_to_file();
+
+            SDL_DestroyTexture(texture);
+            SDL_FreeSurface(image);
             image= IMG_Load("lose.jpg");
             texture= SDL_CreateTextureFromSurface(renderer,image);
             SDL_RenderCopy(renderer,texture,NULL,&texture_rect);
             if(strcmp(name,""))
              show_text(renderer,50,50,name,120,255,0,0,255);
             show_text(renderer,50,170,"LOST",120,255,0,0,255);
+            show_text(renderer,50,710,"HITLER KHOSHAL SHOD",120,255,0,0,255);
             SDL_RenderPresent(renderer);
-            SDL_Delay(3000);
-           // printf("lose");
+            Mix_PauseMusic();
+            SDL_Delay(5000);
+
+            free(arr_of_block);
+            free(arr_of_colors);
+            Mix_FreeMusic(music);
+            Mix_FreeMusic(warningmusic);
+            SDL_FreeSurface(image);
+            SDL_FreeSurface(warningimg);
+            SDL_DestroyTexture(texture);
+            SDL_DestroyTexture(warningtxt);
+            SDL_DestroyRenderer(renderer);
+            SDL_DestroyWindow(window);
             run_menu=true;
-            {
-                SDL_DestroyTexture(texture);
-                SDL_FreeSurface(image);
-                Mix_FreeMusic(music);
-
-                SDL_DestroyTexture(warningtxt);
-                SDL_FreeSurface(warningimg);
-                Mix_FreeMusic(warningmusic);
-
-                SDL_DestroyTexture(textture_waiting);
-                SDL_FreeSurface(img_waiting);
-
-                SDL_DestroyRenderer(renderer);
-                SDL_DestroyWindow(window);
-                window = NULL;
-                renderer = NULL;
-                texture=NULL;
-                image=NULL;
-                music=NULL;
-
-            }
             return true;
         }
     }
+
     if(which==-1)
       delete_last_map_save();
-    {
-        SDL_DestroyTexture(texture);
-        SDL_FreeSurface(image);
-        Mix_FreeMusic(music);
 
-        SDL_DestroyTexture(warningtxt);
-        SDL_FreeSurface(warningimg);
-        Mix_FreeMusic(warningmusic);
-
-        SDL_DestroyTexture(textture_waiting);
-        SDL_FreeSurface(img_waiting);
-
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        window = NULL;
-        renderer = NULL;
-        texture=NULL;
-        image=NULL;
-        music=NULL;
-
-    }
+    free(arr_of_block);
+    free(arr_of_colors);
+    Mix_FreeMusic(music);
+    Mix_FreeMusic(warningmusic);
+    SDL_FreeSurface(image);
+    SDL_FreeSurface(warningimg);
+    SDL_DestroyTexture(texture);
+    SDL_DestroyTexture(warningtxt);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
     return false;
-}   // save ya win ya lose return true end game ya eror return false
+}
+
 bool random_map()
 {
     bool first_number=true;
@@ -2864,10 +2972,6 @@ bool random_map()
                     SDL_DestroyTexture(texture);
                     SDL_FreeSurface(image);
                     Mix_FreeMusic(music);
-                    window = NULL;
-                    renderer = NULL;
-                    texture=NULL;
-                    image=NULL;
                     map(-1);
                     return false;
                 }
@@ -2899,10 +3003,10 @@ bool random_map()
 }    //true vaqti bargashti ghabl false vaqti bazi baste shod
 bool select_map()
 {
-    how_many_maps();
     int scroll=100;
     while (game_is_running)
     {
+        how_many_maps();
         SDL_RenderCopy(renderer, texture, NULL, &texture_rect);
         show_text(renderer,0,0,name_used_in_menu,60,255,0,0,255);
         SDL_ShowCursor(SDL_DISABLE);
@@ -2931,7 +3035,8 @@ bool select_map()
             {
                 return true;
             }
-            check_delete_maps(event);
+            if(check_delete_maps(event))
+                scroll=100;
             int t=which_map_selected(event,scroll);
             if(t!=-1)
             {
@@ -2940,10 +3045,6 @@ bool select_map()
                 SDL_DestroyTexture(texture);
                 SDL_FreeSurface(image);
                 Mix_FreeMusic(music);
-                window = NULL;
-                renderer = NULL;
-                texture=NULL;
-                image=NULL;
                 map(t);
                 return false;
             }
@@ -2954,7 +3055,7 @@ bool select_map()
                 {
                     scroll+=20;
                 }
-                if(event.wheel.y>0)
+                if(event.wheel.y>0 && scroll > (-1)*(600*(number_of_maps-1)-300))
                 {
                     scroll-=20;
                 }
@@ -2966,18 +3067,8 @@ bool select_map()
         SDL_Delay(1000 / FPS);
         SDL_RenderClear(renderer);
     }
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_DestroyTexture(texture);
-    SDL_FreeSurface(image);
-    Mix_FreeMusic(music);
-    window = NULL;
-    renderer = NULL;
-    texture=NULL;
-    image=NULL;
-    music=NULL;
     return false ;
-}
+}  //
 bool new_game()
 {
     while (game_is_running)
@@ -3014,24 +3105,10 @@ bool new_game()
         SDL_Delay(1000 / FPS);
         SDL_RenderClear(renderer);
     }
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_DestroyTexture(texture);
-    SDL_FreeSurface(image);
-    Mix_FreeMusic(music);
-    window = NULL;
-    renderer = NULL;
-    texture=NULL;
-    image=NULL;
-    music=NULL;
-    Mix_Quit();
-    SDL_Quit();
     return false ;
-}
+}  ///
 void menu(){
     strcat(name_used_in_menu,name);
-    if(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY,MIX_DEFAULT_FORMAT,2,2048) < 0)
-        printf("%s",Mix_GetError());
     music= Mix_LoadMUS("music.mp3");
 
     window = SDL_CreateWindow("menu", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -3053,7 +3130,7 @@ void menu(){
                 if (!new_game())
                 {
                     return;
-                } //close the game
+                }
                 sound = !sound;
             }
             if(click_continue(event))
@@ -3070,7 +3147,6 @@ void menu(){
                         SDL_Delay(2000);
                         SDL_RenderClear(renderer);
                 }
-                   // fclose(fptr);
                 else
                 {
                     fclose(fptr);
@@ -3079,11 +3155,6 @@ void menu(){
                     SDL_DestroyTexture(texture);
                     SDL_FreeSurface(image);
                     Mix_FreeMusic(music);
-                    window = NULL;
-                    renderer = NULL;
-                    texture = NULL;
-                    image = NULL;
-                    music = NULL;
                     map(-2);
                     return ;
                 }
@@ -3092,6 +3163,11 @@ void menu(){
             {
                 if(!leaderboard())
                 {
+                    SDL_DestroyRenderer(renderer);
+                    SDL_DestroyWindow(window);
+                    SDL_DestroyTexture(texture);
+                    SDL_FreeSurface(image);
+                    Mix_FreeMusic(music);
                     return ;
                 } //close the game
                 sound=!sound;
@@ -3118,16 +3194,10 @@ void menu(){
     SDL_DestroyTexture(texture);
     SDL_FreeSurface(image);
     Mix_FreeMusic(music);
-    window = NULL;
-    renderer = NULL;
-    texture=NULL;
-    image=NULL;
     return ;
-}
+}  //
 void intro()
 {
-    if(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY,MIX_DEFAULT_FORMAT,2,2048) < 0)
-        printf("%s",Mix_GetError());
     music= Mix_LoadMUS("m3.mp3");
     window = SDL_CreateWindow("intro", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               SCREEN_WIDTH,
@@ -3137,7 +3207,8 @@ void intro()
     char ch[20]="";
     char namep[30]="";
     Mix_PlayMusic(music,1);
-    for (int i = 1; i <= 855; i++) {
+    for (int i = 1; i <= 855; i++)
+    {
         strcpy(namep, "t/");
         numberTOstring(i, ch);
         strcat(ch, ".png");
@@ -3151,10 +3222,8 @@ void intro()
         SDL_RenderCopy(renderer, texture, NULL, &texture_rect);
         SDL_ShowCursor(SDL_DISABLE);
         while (SDL_PollEvent(&event)) {
-        //    soundplay(event);
             check_exit_game(event);
         }
-      //  showcursorandsound();
         SDL_RenderPresent(renderer);
         SDL_Delay(1000 / 52);
         SDL_RenderClear(renderer);
@@ -3179,17 +3248,10 @@ void intro()
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     Mix_FreeMusic(music);
-    window = NULL;
-    renderer = NULL;
-    texture=NULL;
-    image=NULL;
-    music=NULL;
     return;
-}
+}  //
 void first_page()
 {
-    if(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY,MIX_DEFAULT_FORMAT,2,2048) < 0)
-        printf("%s",Mix_GetError());
     music= Mix_LoadMUS("music_first.mp3");
     window = SDL_CreateWindow("HELLO", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               SCREEN_WIDTH,
@@ -3216,28 +3278,42 @@ void first_page()
     SDL_Texture * txt = SDL_CreateTextureFromSurface(renderer,war_first);
     for(int i=0;i<=255;i++)
     {
-        SDL_SetTextureAlphaMod(txt,i);
-        SDL_RenderCopy(renderer,txt,NULL,&texture_rect);
+        if(game_is_running) {
+            while (SDL_PollEvent(&event)) {
+                check_exit_game(event);
+            }
+            SDL_SetTextureAlphaMod(txt, i);
+            SDL_RenderCopy(renderer, txt, NULL, &texture_rect);
+            SDL_RenderPresent(renderer);
+            SDL_RenderClear(renderer);
+            SDL_Delay(1000 / FPS);
+        }
+    }
+    if(game_is_running) {
+        SDL_SetTextureAlphaMod(txt, 255);
+        SDL_RenderCopy(renderer, txt, NULL, &texture_rect);
         SDL_RenderPresent(renderer);
         SDL_RenderClear(renderer);
-        SDL_Delay(1000/FPS);
+        SDL_Delay(500);
+        Mix_PlayMusic(music, -1);
     }
-    SDL_SetTextureAlphaMod(txt,255);
-    SDL_RenderCopy(renderer,txt,NULL,&texture_rect);
-    SDL_RenderPresent(renderer);
-    SDL_RenderClear(renderer);
-    SDL_Delay(3000);
-    Mix_PlayMusic(music,-1);
     for(int i=255;i>=0;i--)
     {
-        SDL_SetTextureAlphaMod(txt,i);
-        SDL_RenderCopy(renderer,txt,NULL,&texture_rect);
-        SDL_RenderPresent(renderer);
-        SDL_RenderClear(renderer);
-        SDL_Delay(1000/FPS);
+        if(game_is_running)
+        {
+            while (SDL_PollEvent(&event)) {
+                check_exit_game(event);
+            }
+            SDL_SetTextureAlphaMod(txt, i);
+            SDL_RenderCopy(renderer, txt, NULL, &texture_rect);
+            SDL_RenderPresent(renderer);
+            SDL_RenderClear(renderer);
+            SDL_Delay(1000 / FPS);
+        }
     }
     SDL_FreeSurface(war_first);
     SDL_DestroyTexture(txt);
+    //////////////////////////////////
     while(tool < imagegame->w /2 && game_is_running)
     {
         SDL_ShowCursor(SDL_DISABLE);
@@ -3247,8 +3323,8 @@ void first_page()
         temp_rect.y=centery-arz/2;
         temp_rect.w=tool;
         temp_rect.h=arz;
-        tool+=1;
-        arz+=1;
+        tool+=2;
+        arz+=2;
         SDL_RenderCopy(renderer, texturegame, NULL, &temp_rect);
         while(SDL_PollEvent(&event))
         {
@@ -3263,28 +3339,28 @@ void first_page()
     {
         SDL_ShowCursor(SDL_DISABLE);
         SDL_RenderCopy(renderer, texture, NULL, &texture_rect);
-        show_text(renderer, 30, 30, "PLEASE ENTER YOUR NAME THEN PRESS ENTER :", 50, 255, 0, 90, temp99);
+        show_text(renderer, 30, 30, "PLEASE ENTER YOUR NAME", 50, 255, 0, 90, temp99);
+        show_text(renderer, 30, 80, "THEN PRESS ENTER :", 50, 255, 0, 90, temp99);
         SDL_RenderCopy(renderer, texturegame, NULL, &temp_rect);
         SDL_ShowCursor(SDL_DISABLE);
-
         while(SDL_PollEvent(&event))
         {
             soundplay(event);
             check_exit_game(event);
         }
-
         showcursorandsound();
         SDL_RenderPresent(renderer);
         SDL_RenderClear(renderer);
         temp99+=5;
     }  //neveshtan enter name
-
     while(game_is_running)
     {
         SDL_ShowCursor(SDL_DISABLE);
         SDL_RenderCopy(renderer, texture, NULL, &texture_rect);
         SDL_RenderCopy(renderer, texturegame, NULL, &temp_rect);
-        show_text(renderer, 30, 30, "PLEASE ENTER YOUR NAME THEN PRESS ENTER :", 50, 255, 0, 90, 255);
+        show_text(renderer, 30, 30, "PLEASE ENTER YOUR NAME", 50, 255, 0, 90, 255);
+         show_text(renderer, 30, 80, "THEN PRESS ENTER :", 50, 255, 0, 90, 255);
+        roundedBoxRGBA(renderer,40,150,600,220,10,255,255,255,170);
         if(name[0]=='\0')
             show_text(renderer,50,150," ",40,0,0,0,255);
         else
@@ -3301,36 +3377,16 @@ void first_page()
             if(ch==SDLK_RETURN)
             {
                 write_name_to_file();
-               /// printf("\n%s",name);
+                SDL_DestroyTexture(texture);
+                SDL_FreeSurface(image);
+                SDL_FreeSurface(imagegame);
+                SDL_DestroyTexture(texturegame);
+                SDL_DestroyRenderer(renderer);
+                SDL_DestroyWindow(window);
+                Mix_FreeMusic(music);
                 if(new_user)
                 {
-                    SDL_DestroyRenderer(renderer);
-                    SDL_DestroyWindow(window);
-                    SDL_DestroyTexture(texture);
-                    SDL_FreeSurface(image);
-                    SDL_DestroyTexture(texturegame);
-                    SDL_DestroyTexture(txt);
-                    Mix_FreeMusic(music);
-                    window = NULL;
-                    renderer = NULL;
-                    texture=NULL;
-                    image=NULL;
-                    music=NULL;
                     intro();
-                }
-                else {
-                    SDL_DestroyRenderer(renderer);
-                    SDL_DestroyWindow(window);
-                    SDL_DestroyTexture(texture);
-                    SDL_FreeSurface(image);
-                    SDL_DestroyTexture(texturegame);
-                    SDL_DestroyTexture(txt);
-                    Mix_FreeMusic(music);
-                    window = NULL;
-                    renderer = NULL;
-                    texture = NULL;
-                    image = NULL;
-                    music = NULL;
                 }
                 menu();
                 return;
@@ -3343,16 +3399,12 @@ void first_page()
         SDL_Delay(1000 / FPS);
         SDL_RenderClear(renderer);
     }
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
     SDL_DestroyTexture(texture);
     SDL_FreeSurface(image);
+    SDL_FreeSurface(imagegame);
+    SDL_DestroyTexture(texturegame);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
     Mix_FreeMusic(music);
-    Mix_Quit();
-    SDL_Quit();
-    window = NULL;
-    renderer = NULL;
-    texture=NULL;
-    image=NULL;
-    music=NULL;
-}
+    return;
+}  //
