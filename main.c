@@ -1,4 +1,25 @@
+#include "generals.h"
+#include "generalfunc.h"
+#include "mapfunc.h"
 #include "functions.h"
+
+bool is_ok_to_run_game()
+{
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER |SDL_INIT_AUDIO) < 0)
+    {
+        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+        return false;
+    }
+    if(Mix_Init(MIX_INIT_MP3) <0)
+        return false;
+    if(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY,MIX_DEFAULT_FORMAT,2,2048) < 0)
+    {
+        printf("%s",Mix_GetError());
+        return false;
+    }
+    return true;
+}///for main
+
 int main()
 {
     if(!is_ok_to_run_game())
@@ -18,9 +39,6 @@ int main()
         wars[i].head->next = NULL;
         wars[i].head->x = 0;
     }
-
-
-
 
   first_page();
 
