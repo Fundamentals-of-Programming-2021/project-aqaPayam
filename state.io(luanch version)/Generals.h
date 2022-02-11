@@ -4,6 +4,7 @@
 
 #ifndef STATE_IO_GENERALS_H
 #define STATE_IO_GENERALS_H
+#pragma once
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_video.h>
@@ -24,19 +25,18 @@
 #define timeexistpotion 150
 #define timeAIattack 30
 
-double Vsoldier=15;
+extern double Vsoldier;
 
-bool saveandexit=false;
-bool your_potion=false;
-bool ai_potion=false;
-int fps_potion[NUM_POTOION]={0};
-int number_of_maps=0;
-char number[50]="";
-char number2[50]="";
-char number3[50]="";
-bool run_menu=false;
-uint32_t color(int r,int g, int b, int a){return    ( (a << 24) + (b<< 16) + (g << 8) + r) ;}
-uint32_t clr[10];
+extern bool saveandexit;
+extern bool your_potion;
+extern bool ai_potion;
+extern int fps_potion[];
+extern int number_of_maps;
+extern char number[50];
+extern char number2[50];
+extern char number3[50];
+extern bool run_menu;
+extern uint32_t clr[10];
 struct potion
 {
     int x;
@@ -64,7 +64,7 @@ struct line
     char lose[50];
     char point[50];
 };
-SDL_Event event;
+extern SDL_Event event;
 struct block
 {
     bool nolimit;
@@ -98,35 +98,35 @@ struct warstatus
     int counter;
     struct soldier * head;
 };
-struct block all_block[45];
-int xCursor=0,yCursor=0;
-Mix_Music *music=NULL;
-SDL_Window *window=NULL;
-SDL_Renderer *renderer = NULL;
-SDL_Texture *texture=NULL;
-SDL_Rect texture_rect={.x=0,.y=0,.w=1920,.h=1080};
-SDL_Surface *image=NULL;
-char name_used_in_menu[200]="welcome ";
-char temp_of_function_numberToString[10]="";
-const int FPS = 60;
-const int SCREEN_WIDTH = 1920;
-const int SCREEN_HEIGHT = 1080;
-bool game_is_running=true;
-bool sound=true;
-bool new_user=true;
-char name[200]="";
-char AIname[3][50]={"AI one","AI two","AI three"};
-int temp1=-1;
-int temp2=-1;
+extern struct block all_block[45];
+extern int xCursor,yCursor;
+extern Mix_Music *music;
+extern SDL_Window *window;
+extern SDL_Renderer *renderer;
+extern SDL_Texture *texture;
+extern SDL_Rect texture_rect;
+extern SDL_Surface *image;
+extern char name_used_in_menu[200];
+extern char temp_of_function_numberToString[10];
+extern const int FPS;
+extern const int SCREEN_WIDTH;
+extern const int SCREEN_HEIGHT;
+extern bool game_is_running;
+extern bool sound;
+extern bool new_user;
+extern char name[200];
+extern char AIname[3][50];
+extern int temp1;
+extern int temp2;
 //////////////////////////////////////////////
-struct potion pot[NUM_POTOION];
-struct warstatus wars[NUM_WAR];
-int number_of_attack=0;
-int number_of_block,number_of_player;
-uint32_t *arr_of_colors;
-struct block *arr_of_block;
-long long counterFPS=0;
-long long countai=0;
+extern struct potion pot[NUM_POTOION];
+extern struct warstatus wars[NUM_WAR];
+extern int number_of_attack;
+extern int number_of_block,number_of_player;
+extern uint32_t *arr_of_colors;
+extern struct block *arr_of_block;
+extern long long counterFPS;
+extern long long countai;
 /////////////////////////////////////////////
 
 #endif //STATE_IO_GENERALS_H
